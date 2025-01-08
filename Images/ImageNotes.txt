@@ -1,0 +1,9 @@
+﻿The infoview icon was created using the SVG editor at:  app.svgator.com
+
+The infoview icon starts with the natural resources icon from the game:
+...\GameUI\Media\Game\Icons\NaturalResources.svg
+
+Then the svgator "location" icon is added on top.
+
+The final icon was resized to 26x26.
+This seems to be the default size for infoview icons in the Icons folder.

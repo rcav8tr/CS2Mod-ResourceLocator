@@ -1,0 +1,23 @@
+﻿.resourceLocatorInfomodeButton {
+    // Default padding is 6rem on all sides.
+    padding-top:        0rem;           // Leave less space on top.
+    padding-left:       2rem;           // Leave less space on left.
+    padding-right:      2rem;           // Leave less space on right.
+    padding-bottom:     0rem;           // Leave less space on bottom.
+}
+
+.resourceLocatorInfomodeButton + .resourceLocatorInfomodeButton {
+    margin-top:         var(--gap2);    // Default space between infomodes is gap5.
+}
+
+.resourceLocatorInfomodeIcon {
+    height:             22rem;          // Larger than building color check box because all resource icons have extra blank space.
+    width:              22rem;          // Match height.
+    margin-right:       7rem;           // Space between icon and color symbol.
+}
+
+.resourceLocatorInfomodeColorSymbol {
+    height:             18rem;          // Match height of building color check box.
+    width:              18rem;          // Match height.
+    margin-right:       7rem;           // Space between color symbol and title.
+}
