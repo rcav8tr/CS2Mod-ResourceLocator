@@ -111,10 +111,10 @@ The following mods were used extensively in the development of this mod:
     <!-- Screenshot.  Copied from Screenshots folder.  Include no spaces in file names.  Max file size is 2.1MB.  Can be set multiple times. -->
     <Screenshot Value="Properties\Screenshots\10Thumbnail.png" />
     <Screenshot Value="Properties\Screenshots\20InfoviewButton.png" />
-    <Screenshot Value="Properties\Screenshots\30Produces.png" />
     <Screenshot Value="Properties\Screenshots\30Requires.png" />
-    <Screenshot Value="Properties\Screenshots\40Sells.png" />
-    <Screenshot Value="Properties\Screenshots\50Stores.png" />
+    <Screenshot Value="Properties\Screenshots\40Produces.png" />
+    <Screenshot Value="Properties\Screenshots\50Sells.png" />
+    <Screenshot Value="Properties\Screenshots\60Stores.png" />
 
 
     <!-- Tag.  Can be set multiple times. -->
@@ -124,7 +124,7 @@ The following mods were used extensively in the development of this mod:
     <ForumLink Value="https://forum.paradoxplaza.com/forum/threads/resource-locator.1725428/" />
 
     <!-- Version of the mod.  Copied from assembly Version. -->
-    <ModVersion Value="1.0.0" />
+    <ModVersion Value="1.0.1" />
 
     <!-- Recommended version of the base game to use the mod. -->
     <GameVersion Value="1.*" />
@@ -134,7 +134,7 @@ The following mods were used extensively in the development of this mod:
 
     <!-- Change log.  Copied from ChangeLog.md file.  Supports minimal markdown subset. -->
     <ChangeLog>
-- Initial release.
+- Fix bad screenshots.
 </ChangeLog>
 
     <!-- External links. Supported types are discord, github, youtube, twitch, x, paypal, patreon, buymeacoffee, kofi, crowdin, gitlab.  Can be set multiple times. -->
