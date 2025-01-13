@@ -35,6 +35,7 @@ Hover the cursor over a resource to get additional information about that resour
 - Whether this resource can be imported/exported or the resource is available only locally.
 - The current production of this resource.
 - The current surplus or deficit of this resource.
+- When the Produces Display Option is selected, the production, surplus, and deficit are shown in 3 bars behind the resource name.
 - All of the above is the same information available on the Production tab of the City Economy view.
 
 ### Building Colors

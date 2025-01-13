@@ -1191,14 +1191,14 @@ namespace ResourceLocator
             // Prevent these jobs from running again until last job is complete.
             base.Dependency = jobHandleSubObject;
 
-            // Wait for the main building job to complete.
+            // Wait for the attachment building job to complete.
             // This seems to help prevent screen flicker.
-            jobHandleMainBuilding.Complete();
+            jobHandleAttachmentBuilding.Complete();
             
             // Dispose of native collections no longer needed once the main building job is complete.
             activeInfomodes.Dispose();
 
-            // Note that the jobs after the main building job could still be executing at this point, which is okay.
+            // Note that the jobs after the attachment building job could still be executing at this point, which is okay.
 
             // This system handled building colors for this mod's infoview.
             // Do not execute the original game logic.

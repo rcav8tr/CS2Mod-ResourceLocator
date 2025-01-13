@@ -13,11 +13,75 @@
 .resourceLocatorInfomodeIcon {
     height:             22rem;          // Larger than building color check box because all resource icons have extra blank space.
     width:              22rem;          // Match height.
-    margin-right:       7rem;           // Space between icon and color symbol.
+    margin-right:       4rem;           // Space between icon and color symbol.
 }
 
 .resourceLocatorInfomodeColorSymbol {
     height:             18rem;          // Match height of building color check box.
     width:              18rem;          // Match height.
-    margin-right:       7rem;           // Space between color symbol and title.
+    margin-right:       4rem;           // Space between color symbol and title.
+}
+
+.resourceLocatorInfomodeProducesBars {
+    display:            flex;
+    flex-direction:     row;
+    flex-grow:          1;
+    flex-shrink:        1;
+    flex-basis:         auto;
+    position:           relative;
+    height:             18rem;
+}
+
+.resourceLocatorInfomodeProducesBar {
+    margin-right:       4rem;
+    height:             18rem;
+    flex-grow:          1;
+    flex-basis:         32%;    // Less than 33.33% to provide space for right margin.
+
+    // Copied from game's Production progress bars:
+    background-color:   rgba(0, 0, 0, 0.22);
+    border-radius:      3rem;
+    position:           relative;
+}
+
+.resourceLocatorInfomodeProducesBarPercent {
+    width:              100%;
+    height:             100%;
+    position:           relative;
+    overflow-x:         hidden;
+    overflow-y:         hidden;
+    border-radius:      3rem;
+}
+
+.resourceLocatorInfomodeProducesBarCover {
+    width:              100%;
+    height:             100%;
+    position:           relative;
+    overflow-x:         hidden;
+    overflow-y:         hidden;
+    background-color:   rgba(80, 80, 80, 1);
+}
+
+.resourceLocatorInfomodeProducesResourceLabel {
+    position:           absolute;
+    // Set top so that text is centered vertically based on font size.
+    top:                calc(-2rem - (10rem * (var(--fontScale) - 1)));
+    left:               0px;
+    bottom:             0px;
+    right:              0px;
+    font-size:          var(--fontSizeS)
+}
+
+.resourceLocatorInfomodeGeneralResourceLabel {
+    // Set top margin to align general text with Produces text.
+    margin-top:         calc(-4rem - (15rem * (var(--fontScale) - 1)));
+    flex-grow:          1;
+    flex-shrink:        1;
+    font-size:          var(--fontSizeS);
+    height:             18rem;
+}
+
+.resourceLocatorInfomodeBuildingColor {
+    flex-grow:          0;
+    flex-shrink:        0;
 }

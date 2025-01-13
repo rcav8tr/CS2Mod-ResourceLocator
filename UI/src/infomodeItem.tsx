@@ -8,7 +8,7 @@ import   styles                           from "infomodeItem.module.scss";
 import   mod                              from "../mod.json";
 import { ModuleResolver                 } from "moduleResolver";
 import { uiBindingNames                 } from "uiBindings";
-import { RLBuildingType                 } from "uiConstants";
+import { DisplayOption, RLBuildingType  } from "uiConstants";
 import { UITranslationKey               } from "uiTranslationKey";
 
 // Define production info passed from C#.
@@ -36,8 +36,9 @@ interface InfomodeItemProps
 }
 
 // Define bindings.
+const bindingDisplayOption   = bindValue<number          >(mod.id, uiBindingNames.DisplayOption, DisplayOption.Requires);
 const bindingProductionInfos = bindValue<ProductionInfo[]>(mod.id, uiBindingNames.ProductionInfos);
-const bindingUnitSettings    = bindValue<UnitSettings>("options", "unitSettings");
+const bindingUnitSettings    = bindValue<UnitSettings    >("options", "unitSettings");
 
 // Custom infmode item.
 // Adapted from the base game's infomode logic.
@@ -53,26 +54,49 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     const surplusText        = translate("EconomyPanel.PRODUCTION_PAGE_SURPLUS")
     const deficitText        = translate("EconomyPanel.PRODUCTION_PAGE_DEFICIT")
 
-    // Get production info for this building type.
+    // Get display option.
+    const displayOption = useValue(bindingDisplayOption);
+
+    // Get production info.
     const productionInfos: ProductionInfo[] = useValue(bindingProductionInfos);
-    var production: number = 0;
-    var surplus:    number = 0;
-    var deficit:    number = 0;
+    var production:   number = 0;
+    var surplus:      number = 0;
+    var deficit:      number = 0;
+    var maxAllValues: number = 0;
     for (var i: number = 0; i < productionInfos.length; i++)
     {
+        // Check for building type of this infomode.
         const productionInfo: ProductionInfo = productionInfos[i];
         if (productionInfo.buildingType === buildingType)
         {
             production = productionInfo.production;
             surplus    = productionInfo.surplus;
             deficit    = productionInfo.deficit;
-            break;
         }
+
+        // Get max of all values.
+        maxAllValues = Math.max(maxAllValues, productionInfo.production, productionInfo.surplus, productionInfo.deficit);
     }
+
+    // Compute percents for production info values.
+    // Percent is computed compared to the max of all values.
+    // This matches the game's Production tab on the City Economy panel.
+    const percentProduction: number = maxAllValues === 0 ? 0 : Math.min(100 * production / maxAllValues, 100);
+    const percentSurplus:    number = maxAllValues === 0 ? 0 : Math.min(100 * surplus    / maxAllValues, 100);
+    const percentDeficit:    number = maxAllValues === 0 ? 0 : Math.min(100 * deficit    / maxAllValues, 100);
+
+    // Compute styles to display production info progress bars.
+    // Colors are same as on the game's Production tab on the City Economy panel.
+    const styleProductionColor:   Partial<CSSProperties> = { backgroundColor: "var(--progressColor)", }
+    const styleSurplusColor:      Partial<CSSProperties> = { backgroundColor: "var(--positiveColor)", }
+    const styleDeficitColor:      Partial<CSSProperties> = { backgroundColor: "var(--negativeColor)", }
+    const styleProductionPercent: Partial<CSSProperties> = { marginLeft: percentProduction + "%", }
+    const styleSurplusPercent:    Partial<CSSProperties> = { marginLeft: percentSurplus    + "%", }
+    const styleDeficitPercent:    Partial<CSSProperties> = { marginLeft: percentDeficit    + "%", }
 
     // Get maximum of production, surplus, and deficit.
     // This maximum is used so that production and surplus/deficit have the same scaling factor and units of measure.
-    const maxValue = Math.max(production, surplus, deficit);
+    const maxValue: number = Math.max(production, surplus, deficit);
 
     // Get scaling factor and unit of measure prefix and text.
     var scalingFactor: number = 1;
@@ -129,12 +153,9 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     }
 
     // Apply scaling factor.
-    if (scalingFactor !== 1)
-    {
-        production = Math.round(production / scalingFactor);
-        surplus    = Math.round(surplus    / scalingFactor);
-        deficit    = Math.round(deficit    / scalingFactor);
-    }
+    const scaledProduction: number = Math.round(production / scalingFactor);
+    const scaledSurplus:    number = Math.round(surplus    / scalingFactor);
+    const scaledDeficit:    number = Math.round(deficit    / scalingFactor);
 
     // Remove variable placeholders from unit of measure text.
     uomText = "" + uomText?.replace("{SIGN}{VALUE}", "");
@@ -152,9 +173,9 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     // Deficit has a positive value.
     // If both surplus and deficit are zero, the zero value will be shown as surplus.
     infomodeTooltip +=
-        "\n\n" +                productionText + ":  " + FormatValue(production) +
-        "\n\n" + (deficit > 0 ? deficitText    + ":  " + FormatValue(deficit   ) :
-                                surplusText    + ":  " + FormatValue(surplus   ));
+        "\n\n" +                productionText + ":  " + FormatValue(scaledProduction) +
+        "\n\n" + (deficit > 0 ? deficitText    + ":  " + FormatValue(scaledDeficit   ) :
+                                surplusText    + ":  " + FormatValue(scaledSurplus   ));
 
     // Get icon based on building type.
     // This logic assumes all building type enum names are the same as the resource file names.
@@ -203,15 +224,48 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
                             <div className={joinClasses(ModuleResolver.instance.ColorLegendClasses.symbol,
                                                         ModuleResolver.instance.InfomodeItemClasses.color,
                                                         styles.resourceLocatorInfomodeColorSymbol)} style={symbolStyle}></div>
-                            <div className={ModuleResolver.instance.InfomodeItemClasses.titleText}>{infomodeTitle}</div>
-                        </div>
-                        <div className={ModuleResolver.instance.InfomodeItemClasses.type}>
-                            {buildingColor}
-                            <div className={joinClasses(ModuleResolver.instance.CheckboxClasses.toggle,
-                                                        ModuleResolver.instance.InfomodeItemClasses.checkbox,
-                                                        (infomode.active ? "checked" : "unchecked"))}>
-                                <div className={joinClasses(ModuleResolver.instance.CheckboxClasses.checkmark,
-                                                            (infomode.active ? "checked" : ""))}></div>
+                            {
+                                displayOption === DisplayOption.Produces &&
+                                (
+                                    <div className={styles.resourceLocatorInfomodeProducesBars}>
+                                        <div className={styles.resourceLocatorInfomodeProducesBar}>
+                                            <div className={styles.resourceLocatorInfomodeProducesBarPercent} style={styleProductionColor}>
+                                                <div className={styles.resourceLocatorInfomodeProducesBarCover} style={styleProductionPercent}></div>
+                                            </div>
+                                        </div>
+                                        <div className={styles.resourceLocatorInfomodeProducesBar}>
+                                            <div className={styles.resourceLocatorInfomodeProducesBarPercent} style={styleSurplusColor}>
+                                                <div className={styles.resourceLocatorInfomodeProducesBarCover} style={styleSurplusPercent}></div>
+                                            </div>
+                                        </div>
+                                        <div className={styles.resourceLocatorInfomodeProducesBar}>
+                                            <div className={styles.resourceLocatorInfomodeProducesBarPercent} style={styleDeficitColor}>
+                                                <div className={styles.resourceLocatorInfomodeProducesBarCover} style={styleDeficitPercent}></div>
+                                            </div>
+                                        </div>
+                                        <div className={styles.resourceLocatorInfomodeProducesResourceLabel}>
+                                            {infomodeTitle}
+                                        </div>
+                                    </div>
+                                )
+                            }
+                            {
+                                displayOption !== DisplayOption.Produces &&
+                                (
+                                    <div className={styles.resourceLocatorInfomodeGeneralResourceLabel}>
+                                        {infomodeTitle}
+                                    </div>
+                                )
+                            }
+                            <div className={joinClasses(ModuleResolver.instance.InfomodeItemClasses.type,
+                                                        styles.resourceLocatorInfomodeBuildingColor)}>
+                                {buildingColor}
+                                <div className={joinClasses(ModuleResolver.instance.CheckboxClasses.toggle,
+                                    ModuleResolver.instance.InfomodeItemClasses.checkbox,
+                                    (infomode.active ? "checked" : "unchecked"))}>
+                                    <div className={joinClasses(ModuleResolver.instance.CheckboxClasses.checkmark,
+                                        (infomode.active ? "checked" : ""))}></div>
+                                </div>
                             </div>
                         </div>
                     </div>

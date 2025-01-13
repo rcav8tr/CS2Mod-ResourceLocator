@@ -51,6 +51,7 @@ Hover the cursor over a resource to get additional information about that resour
 - Whether this resource can be imported/exported or the resource is available only locally.
 - The current production of this resource.
 - The current surplus or deficit of this resource.
+- When the Produces Display Option is selected, the production, surplus, and deficit are shown in 3 bars behind the resource name.
 - All of the above is the same information available on the Production tab of the City Economy view.
 
 ### Building Colors
@@ -124,7 +125,7 @@ The following mods were used extensively in the development of this mod:
     <ForumLink Value="https://forum.paradoxplaza.com/forum/threads/resource-locator.1725428/" />
 
     <!-- Version of the mod.  Copied from assembly Version. -->
-    <ModVersion Value="1.0.1" />
+    <ModVersion Value="1.1.0" />
 
     <!-- Recommended version of the base game to use the mod. -->
     <GameVersion Value="1.*" />
@@ -134,7 +135,7 @@ The following mods were used extensively in the development of this mod:
 
     <!-- Change log.  Copied from ChangeLog.md file.  Supports minimal markdown subset. -->
     <ChangeLog>
-- Fix bad screenshots.
+- Add production, surplus, and deficit bars to the Produces view.
 </ChangeLog>
 
     <!-- External links. Supported types are discord, github, youtube, twitch, x, paypal, patreon, buymeacoffee, kofi, crowdin, gitlab.  Can be set multiple times. -->
