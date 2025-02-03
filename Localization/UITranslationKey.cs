@@ -111,5 +111,25 @@ namespace ResourceLocator
 
         // Unit of measure text.
         public const string UnitOfMeasurePrefixKilo                            = "ResourceLocator.UnitOfMeasurePrefixKilo";
+
+        // Settings.
+        public const string SettingTitle                                       = "Options.SECTION[ResourceLocator.ResourceLocator.Mod]";
+        public const string SettingGroupInclude                                = "Options.GROUP[ResourceLocator.ResourceLocator.Mod.Include]";
+        public const string SettingIncludeGeneralDescription                   = "Options.OPTION[ResourceLocator.ResourceLocator.Mod.ModSettings.IncludeGeneralDescription]";
+        public const string SettingIncludeRecyclingCenterLabel                 = "Options.OPTION[ResourceLocator.ResourceLocator.Mod.ModSettings.IncludeRecyclingCenter]";
+        public const string SettingIncludeRecyclingCenterDesc                  = "Options.OPTION_DESCRIPTION[ResourceLocator.ResourceLocator.Mod.ModSettings.IncludeRecyclingCenter]";
+        public const string SettingIncludeCoalPowerPlantLabel                  = "Options.OPTION[ResourceLocator.ResourceLocator.Mod.ModSettings.IncludeCoalPowerPlant]";
+        public const string SettingIncludeCoalPowerPlantDesc                   = "Options.OPTION_DESCRIPTION[ResourceLocator.ResourceLocator.Mod.ModSettings.IncludeCoalPowerPlant]";
+        public const string SettingIncludeGasPowerPlantLabel                   = "Options.OPTION[ResourceLocator.ResourceLocator.Mod.ModSettings.IncludeGasPowerPlant]";
+        public const string SettingIncludeGasPowerPlantDesc                    = "Options.OPTION_DESCRIPTION[ResourceLocator.ResourceLocator.Mod.ModSettings.IncludeGasPowerPlant]";
+        public const string SettingIncludeMedicalFacilityLabel                 = "Options.OPTION[ResourceLocator.ResourceLocator.Mod.ModSettings.IncludeMedicalFacility]";
+        public const string SettingIncludeMedicalFacilityDesc                  = "Options.OPTION_DESCRIPTION[ResourceLocator.ResourceLocator.Mod.ModSettings.IncludeMedicalFacility]";
+        public const string SettingIncludeEmeregencyShelterLabel               = "Options.OPTION[ResourceLocator.ResourceLocator.Mod.ModSettings.IncludeEmeregencyShelter]";
+        public const string SettingIncludeEmeregencyShelterDesc                = "Options.OPTION_DESCRIPTION[ResourceLocator.ResourceLocator.Mod.ModSettings.IncludeEmeregencyShelter]";
+        public const string SettingIncludeCargoStationLabel                    = "Options.OPTION[ResourceLocator.ResourceLocator.Mod.ModSettings.IncludeCargoStation]";
+        public const string SettingIncludeCargoStationDesc                     = "Options.OPTION_DESCRIPTION[ResourceLocator.ResourceLocator.Mod.ModSettings.IncludeCargoStation]";
+        public const string SettingGroupAbout                                  = "Options.GROUP[ResourceLocator.ResourceLocator.Mod.About]";
+        public const string SettingModVersionLabel                             = "Options.OPTION[ResourceLocator.ResourceLocator.Mod.ModSettings.ModVersion]";
+        public const string SettingModVersionDesc                              = "Options.OPTION_DESCRIPTION[ResourceLocator.ResourceLocator.Mod.ModSettings.ModVersion]";
     }
 }

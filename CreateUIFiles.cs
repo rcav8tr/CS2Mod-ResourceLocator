@@ -91,7 +91,7 @@ namespace ResourceLocator
             sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameSelectedDistrict      .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameSelectedDistrict}\";");
             sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameDistrictInfos         .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameDistrictInfos   }\";");
             sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameDisplayOption         .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameDisplayOption   }\";");
-            sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameProductionInfos       .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameProductionInfos }\";");
+            sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameResourceInfos         .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameResourceInfos   }\";");
             sb.AppendLine("}");
 
             // Include event names.
@@ -201,6 +201,42 @@ namespace ResourceLocator
             TranslationKeys unitOfMeasureText = new TranslationKeys() { "UnitOfMeasurePrefixKilo", };
             sb.AppendLine();
             sb.Append(GetTranslationsContent(csFile, "Unit of measure text.", unitOfMeasureText));
+
+            // For C# file only, include settings translations.
+            if (csFile)
+            {
+                // Construct settings.
+                UIConstants _translationKeySettings = new UIConstants()
+                {
+                    { "SettingTitle",                           Mod.ModSettings.GetSettingsLocaleID()                                                  },
+
+
+                    { "SettingGroupInclude",                    Mod.ModSettings.GetOptionGroupLocaleID(ModSettings.GroupInclude)                       },
+
+                    { "SettingIncludeGeneralDescription",       Mod.ModSettings.GetOptionLabelLocaleID(nameof(ModSettings.IncludeGeneralDescription )) },
+                    { "SettingIncludeRecyclingCenterLabel",     Mod.ModSettings.GetOptionLabelLocaleID(nameof(ModSettings.IncludeRecyclingCenter    )) },
+                    { "SettingIncludeRecyclingCenterDesc",      Mod.ModSettings.GetOptionDescLocaleID (nameof(ModSettings.IncludeRecyclingCenter    )) },
+                    { "SettingIncludeCoalPowerPlantLabel",      Mod.ModSettings.GetOptionLabelLocaleID(nameof(ModSettings.IncludeCoalPowerPlant     )) },
+                    { "SettingIncludeCoalPowerPlantDesc",       Mod.ModSettings.GetOptionDescLocaleID (nameof(ModSettings.IncludeCoalPowerPlant     )) },
+                    { "SettingIncludeGasPowerPlantLabel",       Mod.ModSettings.GetOptionLabelLocaleID(nameof(ModSettings.IncludeGasPowerPlant      )) },
+                    { "SettingIncludeGasPowerPlantDesc",        Mod.ModSettings.GetOptionDescLocaleID (nameof(ModSettings.IncludeGasPowerPlant      )) },
+                    { "SettingIncludeMedicalFacilityLabel",     Mod.ModSettings.GetOptionLabelLocaleID(nameof(ModSettings.IncludeMedicalFacility    )) },
+                    { "SettingIncludeMedicalFacilityDesc",      Mod.ModSettings.GetOptionDescLocaleID (nameof(ModSettings.IncludeMedicalFacility    )) },
+                    { "SettingIncludeEmeregencyShelterLabel",   Mod.ModSettings.GetOptionLabelLocaleID(nameof(ModSettings.IncludeEmeregencyShelter  )) },
+                    { "SettingIncludeEmeregencyShelterDesc",    Mod.ModSettings.GetOptionDescLocaleID (nameof(ModSettings.IncludeEmeregencyShelter  )) },
+                    { "SettingIncludeCargoStationLabel",        Mod.ModSettings.GetOptionLabelLocaleID(nameof(ModSettings.IncludeCargoStation       )) },
+                    { "SettingIncludeCargoStationDesc",         Mod.ModSettings.GetOptionDescLocaleID (nameof(ModSettings.IncludeCargoStation       )) },
+                                                                                                                                                              
+                    { "SettingGroupAbout",                      Mod.ModSettings.GetOptionGroupLocaleID(ModSettings.GroupAbout)                         },
+
+                    { "SettingModVersionLabel",                 Mod.ModSettings.GetOptionLabelLocaleID(nameof(ModSettings.ModVersion                )) },
+                    { "SettingModVersionDesc",                  Mod.ModSettings.GetOptionDescLocaleID (nameof(ModSettings.ModVersion                )) },
+                };
+
+                // Append settings to the file.
+                sb.AppendLine();
+                sb.Append(GetTranslationsContent(csFile, "Settings.", _translationKeySettings));
+            }
 
             // End class.
             sb.AppendLine(csFile ? "    }": "}");

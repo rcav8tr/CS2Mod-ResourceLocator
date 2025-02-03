@@ -56,6 +56,9 @@ namespace ResourceLocator
         Meals,
         Entertainment,
         Recreation,
+
+        // UI logic assumes this is the last building type.
+        MaxValues,
     }
 
     /// <summary>
@@ -111,13 +114,14 @@ namespace ResourceLocator
         public static bool IsSpecialCase(RLBuildingType buildingType)
         {
             return 
-                buildingType == RLBuildingType.None ||
-                buildingType == RLBuildingType.District ||
-                buildingType == RLBuildingType.DisplayOption ||
-                buildingType == RLBuildingType.SelectDeselect ||
-                buildingType == RLBuildingType.HeadingMaterials ||
-                buildingType == RLBuildingType.HeadingMaterialGoods ||
-                buildingType == RLBuildingType.HeadingImmaterialGoods;
+                buildingType == RLBuildingType.None                     ||
+                buildingType == RLBuildingType.District                 ||
+                buildingType == RLBuildingType.DisplayOption            ||
+                buildingType == RLBuildingType.SelectDeselect           ||
+                buildingType == RLBuildingType.HeadingMaterials         ||
+                buildingType == RLBuildingType.HeadingMaterialGoods     ||
+                buildingType == RLBuildingType.HeadingImmaterialGoods   ||
+                buildingType == RLBuildingType.MaxValues;
         }
 
         /// <summary>

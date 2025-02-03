@@ -8,7 +8,7 @@ export class uiBindingNames
     public static SelectedDistrict                     : string = "SelectedDistrict";
     public static DistrictInfos                        : string = "DistrictInfos";
     public static DisplayOption                        : string = "DisplayOption";
-    public static ProductionInfos                      : string = "ProductionInfos";
+    public static ResourceInfos                        : string = "ResourceInfos";
 }
 
 // Define event names for UI to C#.

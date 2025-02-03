@@ -31,6 +31,7 @@ export const InfomodeItemExtend: ModuleRegistryExtend = (Component: any) =>
             if (buildingType === RLBuildingType.District      ) { return (<DistrictSelector        />); }
             if (buildingType === RLBuildingType.DisplayOption ) { return (<DisplayOptionCheckBoxes />); }
             if (buildingType === RLBuildingType.SelectDeselect) { return (<SelectDeselect          />); }
+            if (buildingType === RLBuildingType.MaxValues     ) { return (<></>                      ); }
 
             // Check for special case for headings.
             if (buildingType === RLBuildingType.HeadingMaterials      ||

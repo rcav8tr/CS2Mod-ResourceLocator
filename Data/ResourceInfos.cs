@@ -4,19 +4,19 @@ using System.Collections.Generic;
 namespace ResourceLocator
 {
     /// <summary>
-    /// All production infos needed by UI.
+    /// All resource infos needed by UI.
     /// </summary>
-    public class ProductionInfos : List<ProductionInfo>, IJsonWritable
+    public class ResourceInfos : List<ResourceInfo>, IJsonWritable
     {
         /// <summary>
-        /// Write production infos to the UI.
+        /// Write resource infos to the UI.
         /// </summary>
         public void Write(IJsonWriter writer)
         {
 			writer.ArrayBegin(this.Count);
-			foreach (ProductionInfo productionInfo in this)
+			foreach (ResourceInfo resourceInfo in this)
 			{
-				productionInfo.Write(writer);
+				resourceInfo.Write(writer);
 			}
 			writer.ArrayEnd();
         }

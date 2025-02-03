@@ -1,33 +1,6 @@
-﻿import { Theme      } from "cs2/bindings";
-import { getModule  } from "cs2/modding";
-
-// Define props used by component modules.
-type ToolTipProps =
-    {
-        tooltip: any,
-        forceVisible?: any,
-        disabled?: any,
-        theme: any,
-        direction: string,
-        alignment?: any,
-        className?: any,
-        children: any,
-        anchorElRef?: any
-    }
-
-type FormattedParagraphsProps =
-    {
-        focusKey?: any,
-        text?: any,
-        theme?: any,
-        renderer?: any,
-        className?: any,
-        children: any,
-        onLinkSelect?: any,
-        maxLineLength?: any,
-        splitLineLength?: any, 
-        other?: any[]
-    }
+﻿import { Theme                                  } from "cs2/bindings";
+import { getModule                              } from "cs2/modding";
+import { FormattedParagraphsProps, TooltipProps } from "cs2/ui";
 
 // Provide access to modules from index.js.
 export class ModuleResolver
@@ -53,7 +26,7 @@ export class ModuleResolver
     private _colorLegendClasses: any;
 
     // Provide access to component modules.
-    public get Tooltip():               (props: ToolTipProps)               => JSX.Element { return this._tooltip               ?? (this._tooltip               = getModule("game-ui/common/tooltip/tooltip.tsx",               "Tooltip"               )); }
+    public get Tooltip():               (props: TooltipProps)               => JSX.Element { return this._tooltip               ?? (this._tooltip               = getModule("game-ui/common/tooltip/tooltip.tsx",               "Tooltip"               )); }
     public get FormattedParagraphs():   (props: FormattedParagraphsProps)   => JSX.Element { return this._formattedParagraphs   ?? (this._formattedParagraphs   = getModule("game-ui/common/text/formatted-paragraphs.tsx",     "FormattedParagraphs"   )); }
 
     // Provide access to code modules.

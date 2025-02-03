@@ -3,12 +3,13 @@
 	<PropertyGroup>
 		<OutputType>Library</OutputType>
 		<TargetFramework>net472</TargetFramework>
-		<Configurations>Debug;Release</Configurations>
+        <LangVersion>9.0</LangVersion>
+        <Configurations>Debug;Release</Configurations>
 		
 		<!--The file where mod information which is required for publishing mod on PDX mods are stored-->
 		<PublishConfigurationPath>Properties\PublishConfiguration.xml</PublishConfigurationPath>
 		<Title>Resource Locator</Title>
-		<Version>1.1.0</Version>
+		<Version>1.2.0</Version>
 		<Description>New info view to locate buildings where resources are required, produced, sold, and stored.</Description>
 		<Copyright>Copyright © 2025</Copyright>
         <TreatWarningsAsErrors>True</TreatWarningsAsErrors>

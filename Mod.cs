@@ -10,6 +10,9 @@ namespace ResourceLocator
 {
     public class Mod : IMod
     {
+        // The global settings for this mod.
+        public static ModSettings ModSettings { get; set; }
+
         // URI for UI images.
         // When the URI is used to access an image, the game forces the URI portion to lower case.
         // So make the URI lower case here to be compatible.
@@ -24,6 +27,14 @@ namespace ResourceLocator
             
             try
             {
+                // Register mod settings.
+                ModSettings = new ModSettings(this);
+                ModSettings.RegisterInOptionsUI();
+
+                // Load mod settings.
+                AssetDatabase.global.LoadSettings(ModAssemblyInfo.Name, ModSettings, new ModSettings(this));
+                ModSettings.ApplyAndSave();
+
                 // Initialize translations.
                 Translation.Initialize();
 
@@ -52,9 +63,8 @@ namespace ResourceLocator
                 //    // Exclude assets.
                 //    if (!keyValue.Key.StartsWith("Assets."))
                 //    {
-                //        if (keyValue.Key.ToLower().Contains("thousand"))
-                //        // if (keyValue.Value == ("Production"))
-                //        //if (keyValue.Value == "Production" || keyValue.Value == "Surplus" || keyValue.Value == "Deficit")
+                //        //if (keyValue.Key.ToLower().Contains("thousand"))
+                //        if (keyValue.Value.StartsWith("Cargo"))
                 //        {
                 //            LogUtil.Info(keyValue.Key + "\t" + keyValue.Value);
                 //        }
@@ -68,7 +78,7 @@ namespace ResourceLocator
                 //    localizationManager.SetActiveLocale(localeID);
                 //    foreach (System.Collections.Generic.KeyValuePair<string, string> keyValue in localizationManager.activeDictionary.entries)
                 //    {
-                //        if (keyValue.Key == "Common.THOUSANDS_SEPARATOR")
+                //        if (keyValue.Key == "EconomyPanel.PRODUCTION_PAGE_PRODUCTIONLINK[Import]")
                 //        {
                 //            LogUtil.Info(keyValue.Key + "\t" + localeID + "\t" + keyValue.Value);
                 //            break;
@@ -99,7 +109,10 @@ namespace ResourceLocator
         {
             LogUtil.Info($"{nameof(Mod)}.{nameof(OnDispose)}");
 
-            // Nothing more to do here.
+            // Unregister mod settings.
+            ModSettings?.ApplyAndSave();
+            ModSettings?.UnregisterInOptionsUI();
+            ModSettings = null;
         }
     }
 }

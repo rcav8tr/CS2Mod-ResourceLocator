@@ -8,6 +8,7 @@ using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
+using Unity.Jobs.LowLevel.Unsafe;
 using UnityEngine.Scripting;
 
 namespace ResourceLocator
@@ -19,6 +20,15 @@ namespace ResourceLocator
     /// </summary>
     public partial class BuildingColorSystem : Game.GameSystemBase
     {
+        /// <summary>
+        /// Storage amount for a resource.
+        /// </summary>
+        private struct StorageAmount
+        { 
+            public Game.Economy.Resource resource;
+            public int amount;
+        }
+
         /// <summary>
         /// Information for an active infomode.
         /// </summary>
@@ -108,6 +118,23 @@ namespace ResourceLocator
             // Active infomodes.
             [ReadOnly] public NativeArray<ActiveInfomode> ActiveInfomodes;
 
+            // Array of lists to return storage amounts to the BuildingColorSystem.
+            // The outer array is one for each possible thread.
+            // The inner list is one for each storage amount computed in that thread.
+            // Even though the outer array is read only, entries can still be added to the inner lists.
+            [ReadOnly] public NativeArray<NativeList<StorageAmount>> StorageAmountRequires;
+            [ReadOnly] public NativeArray<NativeList<StorageAmount>> StorageAmountProduces;
+            [ReadOnly] public NativeArray<NativeList<StorageAmount>> StorageAmountSells;
+            [ReadOnly] public NativeArray<NativeList<StorageAmount>> StorageAmountStores;
+
+            // Mod settings used in the job.
+            [ReadOnly] public bool IncludeRecyclingCenter;
+            [ReadOnly] public bool IncludeCoalPowerPlant;
+            [ReadOnly] public bool IncludeGasPowerPlant;
+            [ReadOnly] public bool IncludeMedicalFacility;
+            [ReadOnly] public bool IncludeEmeregencyShelter;
+            [ReadOnly] public bool IncludeCargoStation;
+
             // Selected district.
             [ReadOnly] public Entity SelectedDistrict;
             [ReadOnly] public bool SelectedDistrictIsEntireCity;
@@ -195,7 +222,7 @@ namespace ResourceLocator
                 // Logic adapated from Game.UI.InGame.CompanySection.OnProcess().
 
                 // Company must have a resources buffer and industrial process data.
-                if (BufferLookupResources.TryGetBuffer(companyEntity, out DynamicBuffer<Game.Economy.Resources> _) &&
+                if (BufferLookupResources.TryGetBuffer(companyEntity, out DynamicBuffer<Game.Economy.Resources> bufferResources) &&
                     ComponentLookupPrefabRef.TryGetComponent(companyEntity, out Game.Prefabs.PrefabRef companyPrefabRef) &&
                     ComponentLookupIndustrialProcessData.TryGetComponent(companyPrefabRef.m_Prefab, out Game.Prefabs.IndustrialProcessData companyIndustrialProcessData))
                 {
@@ -206,45 +233,45 @@ namespace ResourceLocator
                     Game.Economy.Resource resourceSells     = Game.Economy.Resource.NoResource;
                     Game.Economy.Resource resourceStores    = Game.Economy.Resource.NoResource;
 
-                    // A company with service available might require resources but always sells.
-                    if (ComponentLookupServiceAvailable.HasComponent(companyEntity))
-                    {
-                        // Get input and output resources.
-                        Game.Economy.Resource input1Resource = companyIndustrialProcessData.m_Input1.m_Resource;
-                        Game.Economy.Resource input2Resource = companyIndustrialProcessData.m_Input2.m_Resource;
-                        Game.Economy.Resource outputResource = companyIndustrialProcessData.m_Output.m_Resource;
+                    // Get input and output resources.
+                    Game.Economy.Resource resourceInput1 = companyIndustrialProcessData.m_Input1.m_Resource;
+                    Game.Economy.Resource resourceInput2 = companyIndustrialProcessData.m_Input2.m_Resource;
+                    Game.Economy.Resource resourceOutput = companyIndustrialProcessData.m_Output.m_Resource;
                             
+                    // A company with service available might require resources but always sells.
+                    bool serviceCompany = ComponentLookupServiceAvailable.HasComponent(companyEntity);
+                    if (serviceCompany)
+                    {
                         // Check if building requires input 1 or 2 resources.
-                        if (input1Resource != Game.Economy.Resource.NoResource && input1Resource != outputResource)
+                        if (resourceInput1 != Game.Economy.Resource.NoResource && resourceInput1 != resourceOutput)
                         {
-                            resourceRequires1 = input1Resource;
+                            resourceRequires1 = resourceInput1;
                         }
-                        if (input2Resource != Game.Economy.Resource.NoResource && input2Resource != outputResource && input2Resource != input1Resource)
+                        if (resourceInput2 != Game.Economy.Resource.NoResource && resourceInput2 != resourceOutput && resourceInput2 != resourceInput1)
                         {
-                            resourceRequires2 = input2Resource;
+                            resourceRequires2 = resourceInput2;
                         }
 
                         // Building sells the output resource.
-                        resourceSells = outputResource;
+                        resourceSells = resourceOutput;
                     }
 
-                    // A processing company always requires and produces.
+                    // A processing company might require resources but always produces a resource.
                     else if (ComponentLookupProcessingCompany.HasComponent(companyEntity))
                     {
-                        // Building requires input 1 and 2 resources.
-                        // One or the other may be NoResource, but one or both should always be a valid resource.
-                        resourceRequires1 = companyIndustrialProcessData.m_Input1.m_Resource;
-                        resourceRequires2 = companyIndustrialProcessData.m_Input2.m_Resource;
+                        // Every extractor company is also a processing company.
+                        // But not every processing company is an extrator company.
+                        // Only a non-extractor company requires resources.
+                        if (!ComponentLookupExtractorCompany.HasComponent(companyEntity))
+                        {
+                            // Building requires input 1 and 2 resources.
+                            // One or the other may be NoResource, but one or both should always be a valid resource.
+                            resourceRequires1 = resourceInput1;
+                            resourceRequires2 = resourceInput2;
+                        }
 
                         // Building produces the output resource.
-                        resourceProduces = companyIndustrialProcessData.m_Output.m_Resource;
-                    }
-
-                    // An extractor company only produces.
-                    else if (ComponentLookupExtractorCompany.HasComponent(companyEntity))
-                    {
-                        // Building produces the output resource.
-                        resourceProduces = companyIndustrialProcessData.m_Output.m_Resource;
+                        resourceProduces = resourceOutput;
                     }
 
                     // A storage company stores.
@@ -266,6 +293,16 @@ namespace ResourceLocator
                         case DisplayOption.Sells:    SetBuildingColorForActiveInfomode(colors, colorsIndex, resourceSells                       ); break;
                         case DisplayOption.Stores:   SetBuildingColorForActiveInfomode(colors, colorsIndex, resourceStores                      ); break;
                     }
+
+                    // Save storage amounts for each resource in the buffer.
+                    foreach (Game.Economy.Resources resources in bufferResources)
+                    {
+                        if (resources.m_Resource == resourceRequires1) { SaveAmount(ref StorageAmountRequires, resourceRequires1, resources.m_Amount); }
+                        if (resources.m_Resource == resourceRequires2) { SaveAmount(ref StorageAmountRequires, resourceRequires2, resources.m_Amount); }
+                        if (resources.m_Resource == resourceProduces ) { SaveAmount(ref StorageAmountProduces, resourceProduces,  resources.m_Amount); }
+                        if (resources.m_Resource == resourceSells    ) { SaveAmount(ref StorageAmountSells,    resourceSells,     resources.m_Amount); }
+                        if (resources.m_Resource == resourceStores   ) { SaveAmount(ref StorageAmountStores,   resourceStores,    resources.m_Amount); }
+                    }
                 }
             }
 
@@ -281,121 +318,136 @@ namespace ResourceLocator
                 }
 
                 // Building must have a resources buffer that can be checked.
-                if (BufferLookupResources.TryGetBuffer(entity, out DynamicBuffer<Game.Economy.Resources> resources))
+                if (!BufferLookupResources.TryGetBuffer(entity, out DynamicBuffer<Game.Economy.Resources> bufferResources))
                 {
-                    // These special case buildings only produce resources, so proceed only for the Produces display option.
-                    if (DisplayOption == DisplayOption.Produces)
+                    return;
+                }
+
+                // Check for a recycling center that can produce multiple resources.
+                // Empirical evidence suggests the produced resources are:  Metals, Plastics, Textiles, and Paper.
+                if (chunk.Has(ref ComponentTypeHandleGarbageFacility) && chunk.Has(ref ComponentTypeHandleResourceProducer))
+                {
+                    // Check if recycling center is included.
+                    if (IncludeRecyclingCenter)
                     {
-                        // Check for a recycling center that can produce multiple resources.
-                        // Building is colored according to the top most active infomode
-                        // corresponding to a resource that the building currently has storage for.
-                        // Empirical evidence suggests the produced resources are:  Metals, Plastics, Textiles, and Paper.
-                        if (chunk.Has(ref ComponentTypeHandleGarbageFacility) && chunk.Has(ref ComponentTypeHandleResourceProducer))
+                        // Do each resource in the buffer,
+                        for (int i = 0; i < bufferResources.Length; i++)
                         {
-                            // Check each active infomode.
+                            // Save amount for Produces.
+                            // This will save resource amounts for resources this mod does not care about (e.g. garbage).
+                            // These unneeded saved resource amounts will simply be ignored in later logic.
+                            // It is faster to save and ignore these few unneeded amounts than
+                            // to determine which few unneeded resources should not be saved in the first place.
+                            SaveAmount(ref StorageAmountProduces, bufferResources[i].m_Resource, bufferResources[i].m_Amount);
+                        }
+
+                        // Set building color only for Produces display option.
+                        if (DisplayOption == DisplayOption.Produces)
+                        {
+                            // Building color is set according to the top most active infomode
+                            // corresponding to a resource that the building currently allows to be stored
+                            // even if the building currently has none of that resource stored.
+
+                            // Do each active infomode.
                             foreach (ActiveInfomode activeInfomode in ActiveInfomodes)
                             {
+                                // Do each resource in the buffer.
                                 Game.Economy.Resource activeInfomodeResource = activeInfomode.resource;
-                                for (int i = 0; i < resources.Length; i++)
+                                for (int i = 0; i < bufferResources.Length; i++)
                                 {
-                                    if (resources[i].m_Resource == activeInfomodeResource)
+                                    // Check if resource from buffer is resource for this active infomode.
+                                    if (bufferResources[i].m_Resource == activeInfomodeResource)
                                     {
+                                        // Found resource.
                                         // Set building color according to this active infomode.
                                         SetBuildingColor(colors, colorsIndex, activeInfomode.infomodeIndex);
+
+                                        // Stop checking.
                                         return;
                                     }
                                 }
                             }
-
-                            // No active infomode found in buffer.
-                            return;
                         }
                     }
 
-                    // These special case buildings only store resources, so proceed only for the Stores display option.
-                    else if (DisplayOption == DisplayOption.Stores)
+                    // Found recycling center. No need to check buildings further.
+                    return;
+                }
+
+                // Check for an electricity producer that stores coal or petrochemicals.
+                // This mod ignores the Incineration Plant which produces electricity
+                // from stored garbage because garbage is not tracked by this mod.
+                if (chunk.Has(ref ComponentTypeHandleElectricityProducer))
+                {
+                    // Check if coal and gas power plant is included.
+                    if (IncludeCoalPowerPlant) { SetBuildingColorForStores(colors, colorsIndex, bufferResources, Game.Economy.Resource.Coal          ); }
+                    if (IncludeGasPowerPlant ) { SetBuildingColorForStores(colors, colorsIndex, bufferResources, Game.Economy.Resource.Petrochemicals); }
+                    return;
+                }
+
+                // Check for a hospital that stores pharmaceuticals.
+                if (chunk.Has(ref ComponentTypeHandleHospital))
+                {
+                    // Check if medical facility is included.
+                    if (IncludeMedicalFacility) { SetBuildingColorForStores(colors, colorsIndex, bufferResources, Game.Economy.Resource.Pharmaceuticals); }
+                    return;
+                }
+
+                // Check for an emergency shelter that stores food.
+                if (chunk.Has(ref ComponentTypeHandleEmergencyShelter))
+                {
+                    // Check if emergency shelter is included.
+                    if (IncludeEmeregencyShelter) { SetBuildingColorForStores(colors, colorsIndex, bufferResources, Game.Economy.Resource.Food); }
+                    return;
+                }
+
+                // Check for a cargo transport station that can store multiple resources.
+                if (chunk.Has(ref ComponentTypeHandleCargoTransportStation))
+                {
+                    // Check if cargo station is included.
+                    if (IncludeCargoStation)
                     {
-                        // Check for an electricity producer that stores coal or petrochemicals.
-                        // This mod ignores the Incinerator Plant which produces electricity from stored garbage.
-                        if (chunk.Has(ref ComponentTypeHandleElectricityProducer))
+                        // Do each resource in the buffer,
+                        for (int i = 0; i < bufferResources.Length; i++)
                         {
-                            // Check buffer for resources.
-                            for (int i = 0; i < resources.Length; i++)
-                            {
-                                if (resources[i].m_Resource == Game.Economy.Resource.Coal)
-                                {
-                                    SetBuildingColorForActiveInfomode(colors, colorsIndex, Game.Economy.Resource.Coal);
-                                    return;
-                                }
-                                if (resources[i].m_Resource == Game.Economy.Resource.Petrochemicals)
-                                {
-                                    SetBuildingColorForActiveInfomode(colors, colorsIndex, Game.Economy.Resource.Petrochemicals);
-                                    return;
-                                }
-                            }
-
-                            // Resources not found in buffer.
-                            return;
+                            // Save amount for Stores.
+                            // This will save resource amounts for resources this mod does not care about (e.g. mail).
+                            // These unneeded saved resource amounts will simply be ignored in later logic.
+                            // It is faster to save and ignore these few unneeded amounts than
+                            // to determine which few unneeded resources should not be saved in the first place.
+                            SaveAmount(ref StorageAmountStores, bufferResources[i].m_Resource, bufferResources[i].m_Amount);
                         }
 
-                        // Check for a hospital that stores pharmaceuticals.
-                        if (chunk.Has(ref ComponentTypeHandleHospital))
+                        // Set building color only for Stores display option.
+                        if (DisplayOption == DisplayOption.Stores)
                         {
-                            // Check buffer for resource.
-                            for (int i = 0; i < resources.Length; i++)
-                            {
-                                if (resources[i].m_Resource == Game.Economy.Resource.Pharmaceuticals)
-                                {
-                                    SetBuildingColorForActiveInfomode(colors, colorsIndex, Game.Economy.Resource.Pharmaceuticals);
-                                    return;
-                                }
-                            }
+                            // Building color is set according to the top most active infomode
+                            // corresponding to a resource that the building is currently storing.
 
-                            // Resource not found in buffer.
-                            return;
-                        }
-
-                        // Check for an emergency shelter that stores food.
-                        if (chunk.Has(ref ComponentTypeHandleEmergencyShelter))
-                        {
-                            // Check buffer for resource.
-                            for (int i = 0; i < resources.Length; i++)
-                            {
-                                if (resources[i].m_Resource == Game.Economy.Resource.Food)
-                                {
-                                    SetBuildingColorForActiveInfomode(colors, colorsIndex, Game.Economy.Resource.Food);
-                                    return;
-                                }
-                            }
-
-                            // Resource not found in buffer.
-                            return;
-                        }
-
-                        // Check for a cargo transport station that can store multiple resources.
-                        // Building is colored according to the top most active infomode
-                        // corresponding to a resource that the building is currently storing.
-                        if (chunk.Has(ref ComponentTypeHandleCargoTransportStation))
-                        {
-                            // Check each active infomode.
+                            // Do each active infomode.
                             foreach (ActiveInfomode activeInfomode in ActiveInfomodes)
                             {
+                                // Do each resource in the buffer.
                                 Game.Economy.Resource activeInfomodeResource = activeInfomode.resource;
-                                for (int i = 0; i < resources.Length; i++)
+                                for (int i = 0; i < bufferResources.Length; i++)
                                 {
-                                    if (resources[i].m_Resource == activeInfomodeResource && resources[i].m_Amount > 0)
+                                    // Check if resource from buffer is resource for this active infomode.
+                                    if (bufferResources[i].m_Resource == activeInfomodeResource && bufferResources[i].m_Amount > 0)
                                     {
+                                        // Found resource.
                                         // Set building color according to this active infomode.
                                         SetBuildingColor(colors, colorsIndex, activeInfomode.infomodeIndex);
+
+                                        // Stop checking.
                                         return;
                                     }
                                 }
                             }
-
-                            // No active infomode found in buffer.
-                            return;
                         }
                     }
+
+                    // Found cargo transport station. No need to check buildings further.
+                    return;
                 }
             }
 
@@ -417,6 +469,41 @@ namespace ResourceLocator
                         // Resource is active.
                         // Set building color according to this active infomode.
                         SetBuildingColor(colors, colorsIndex, activeInfomode.infomodeIndex);
+
+                        // Stop checking.
+                        break;
+                    }
+                }
+            }
+
+            /// <summary>
+            /// Set building color and save storage amount for Stores display option.
+            /// </summary>
+            private void SetBuildingColorForStores
+            (
+                NativeArray<Game.Objects.Color> colors,
+                int colorsIndex,
+                DynamicBuffer<Game.Economy.Resources> bufferResources,
+                Game.Economy.Resource resourceToCheck
+            )
+            {
+                // Do each resource in the buffer.
+                for (int i = 0; i < bufferResources.Length; i++)
+                {
+                    // Check if buffer resource is resource to check.
+                    if (bufferResources[i].m_Resource == resourceToCheck)
+                    {
+                        // Found the resource.
+                        // Set building color only for Stores display option.
+                        if (DisplayOption == DisplayOption.Stores)
+                        {
+                            SetBuildingColorForActiveInfomode(colors, colorsIndex, resourceToCheck);
+                        }
+
+                        // Save amount for Stores.
+                        SaveAmount(ref StorageAmountStores, resourceToCheck, bufferResources[i].m_Amount);
+
+                        // Stop checking.
                         break;
                     }
                 }
@@ -427,8 +514,23 @@ namespace ResourceLocator
             /// </summary>
             private void SetBuildingColor(NativeArray<Game.Objects.Color> colors, int colorsIndex, byte infomodeIndex)
             {
-                // All of the logic in this job is for this right here.
+                // Much of the logic in this job is for this right here.
                 colors[colorsIndex] = new Game.Objects.Color(infomodeIndex, (byte)255);
+            }
+
+            /// <summary>
+            /// Save a storage amount.
+            /// </summary>
+            private void SaveAmount(ref NativeArray<NativeList<StorageAmount>> storageAmounts, Game.Economy.Resource resource, int amount)
+            {
+                // Resource must be valid.
+                // Do not save zeroes.
+                if (resource != Game.Economy.Resource.NoResource && amount != 0)
+                {
+                    // Add an entry of storage amount for this thread.
+                    // By having a separate entry for each thread, parallel threads will never access the same inner list at the same time.
+                    storageAmounts[JobsUtility.ThreadIndex].Add(new StorageAmount() { resource = resource, amount = amount });
+                }
             }
         }
 
@@ -712,6 +814,22 @@ namespace ResourceLocator
         // Harmony ID.
         private const string HarmonyID = "rcav8tr." + ModAssemblyInfo.Name;
 
+        // Max number of thread entries in the previous frame.
+        private const int defaultMaxThreadEntries = 8;
+        private int _previousMaxThreadEntriesStorageRequires = defaultMaxThreadEntries;
+        private int _previousMaxThreadEntriesStorageProduces = defaultMaxThreadEntries;
+        private int _previousMaxThreadEntriesStorageSells    = defaultMaxThreadEntries;
+        private int _previousMaxThreadEntriesStorageStores   = defaultMaxThreadEntries;
+
+        // Arrays to hold total storage amounts by resource.
+        private int[] _totalStorageRequires = new int[Game.Economy.EconomyUtils.ResourceCount];
+        private int[] _totalStorageProduces = new int[Game.Economy.EconomyUtils.ResourceCount];
+        private int[] _totalStorageSells    = new int[Game.Economy.EconomyUtils.ResourceCount];
+        private int[] _totalStorageStores   = new int[Game.Economy.EconomyUtils.ResourceCount];
+
+        // Lock for accessing total storage amounts.
+        private readonly object _totalStorageLock = new object();
+
         /// <summary>
         /// Called before OnCreate.
         /// </summary>
@@ -824,7 +942,9 @@ namespace ResourceLocator
                     },
 			        None = new ComponentType[]
 			        {
-				        ComponentType.ReadOnly<Game.Tools.      Hidden>(),      // Exclude hidden buildings.
+                        // Do not exclude hidden buildings because they must be included in the storage data.
+				        //ComponentType.ReadOnly<Hidden>(),
+
                         ComponentType.ReadOnly<Game.Buildings.  Abandoned>(),   // Exclude abandoned buildings. 
                         ComponentType.ReadOnly<Game.Buildings.  Condemned>(),   // Exclude condemned buildings.
 				        ComponentType.ReadOnly<Game.Common.     Deleted>(),     // Exclude deleted   buildings.
@@ -1039,6 +1159,30 @@ namespace ResourceLocator
             NativeArray<ActiveInfomode> activeInfomodes = new NativeArray<ActiveInfomode>(tempActiveInfomodes.ToArray(), Allocator.TempJob);
             tempActiveBuildingDataChunks.Dispose();
 
+            // Create arrays for storage amounts, one entry for each possible parallel job thread.
+            int threadCount = JobsUtility.ThreadIndexCount;
+            NativeArray<NativeList<StorageAmount>> storageAmountRequires = new(threadCount, Allocator.TempJob);
+            NativeArray<NativeList<StorageAmount>> storageAmountProduces = new(threadCount, Allocator.TempJob);
+            NativeArray<NativeList<StorageAmount>> storageAmountSells    = new(threadCount, Allocator.TempJob);
+            NativeArray<NativeList<StorageAmount>> storageAmountStores   = new(threadCount, Allocator.TempJob);
+            for (int i = 0; i < threadCount; i++)
+            {
+                // Each thread array entry is a list to hold storage amounts.
+                // When the list capacity needs to be expanded because a new entry is added, a new larger block of memory is allocated,
+                // old list is copied there, then old list memory is released.  Doing all this every frame would reduce performance.
+                // Initial list capacity is set to the max number of thread entries from the previous frame.
+                // This is to try to minimize the number of times the list capacity needs to be expanded when adding new entries
+                // while at the same time not using much more memory than is needed for the list.
+                // It appears from empirical testing that:
+                //      The actual initial list capacity is the power of 2 that is at least as large as the initial capacity.
+                //      If the list capacity needs to be increased to add another entry, the list capacity is doubled.
+                //      Therefore, list capacity is always a power of 2.
+                storageAmountRequires[i] = new NativeList<StorageAmount>(_previousMaxThreadEntriesStorageRequires, Allocator.TempJob);
+                storageAmountProduces[i] = new NativeList<StorageAmount>(_previousMaxThreadEntriesStorageProduces, Allocator.TempJob);
+                storageAmountSells   [i] = new NativeList<StorageAmount>(_previousMaxThreadEntriesStorageSells,    Allocator.TempJob);
+                storageAmountStores  [i] = new NativeList<StorageAmount>(_previousMaxThreadEntriesStorageStores,   Allocator.TempJob);
+            }
+
             // Update buffers and components for main building colors job.
             _componentTypeHandleColor                       .Update(ref CheckedStateRef);
 
@@ -1110,6 +1254,18 @@ namespace ResourceLocator
                 EntityTypeHandle                                = _entityTypeHandle,
                 
                 ActiveInfomodes                                 = activeInfomodes,
+                
+                StorageAmountRequires                           = storageAmountRequires,
+                StorageAmountProduces                           = storageAmountProduces,
+                StorageAmountSells                              = storageAmountSells,
+                StorageAmountStores                             = storageAmountStores,
+
+                IncludeRecyclingCenter                          = Mod.ModSettings.IncludeRecyclingCenter,
+                IncludeCoalPowerPlant                           = Mod.ModSettings.IncludeCoalPowerPlant,
+                IncludeGasPowerPlant                            = Mod.ModSettings.IncludeGasPowerPlant,
+                IncludeMedicalFacility                          = Mod.ModSettings.IncludeMedicalFacility,
+                IncludeEmeregencyShelter                        = Mod.ModSettings.IncludeEmeregencyShelter,
+                IncludeCargoStation                             = Mod.ModSettings.IncludeCargoStation,
 
                 SelectedDistrict                                = _resourceLocatorUISystem.selectedDistrict,
                 SelectedDistrictIsEntireCity                    = _resourceLocatorUISystem.selectedDistrict == ResourceLocatorUISystem.EntireCity,
@@ -1191,18 +1347,93 @@ namespace ResourceLocator
             // Prevent these jobs from running again until last job is complete.
             base.Dependency = jobHandleSubObject;
 
-            // Wait for the attachment building job to complete.
-            // This seems to help prevent screen flicker.
-            jobHandleAttachmentBuilding.Complete();
+            // Wait for the main building job to complete before accessing storage data.
+            jobHandleMainBuilding.Complete();
             
             // Dispose of native collections no longer needed once the main building job is complete.
             activeInfomodes.Dispose();
+
+            // Lock the thread while writing totals.
+            lock (_totalStorageLock)
+            {
+                // Accumulate totals.
+                AccumulateTotals(ref storageAmountRequires, ref _totalStorageRequires, ref _previousMaxThreadEntriesStorageRequires);
+                AccumulateTotals(ref storageAmountProduces, ref _totalStorageProduces, ref _previousMaxThreadEntriesStorageProduces);
+                AccumulateTotals(ref storageAmountSells,    ref _totalStorageSells,    ref _previousMaxThreadEntriesStorageSells   );
+                AccumulateTotals(ref storageAmountStores,   ref _totalStorageStores,   ref _previousMaxThreadEntriesStorageStores  );
+            }
+
+            // Wait for the attachment building job to complete.
+            // This seems to help prevent screen flicker.
+            jobHandleAttachmentBuilding.Complete();
 
             // Note that the jobs after the attachment building job could still be executing at this point, which is okay.
 
             // This system handled building colors for this mod's infoview.
             // Do not execute the original game logic.
             return false;
+        }
+
+        /// <summary>
+        /// Accumulate totals from storage amounts.
+        /// </summary>
+        private void AccumulateTotals(ref NativeArray<NativeList<StorageAmount>> storageAmounts, ref int[] total, ref int previousMaxThreadEntries)
+        {
+            // Initialize return values.
+            for (int i = 0; i < total.Length; i++)
+            {
+                total[i] = 0;
+            }
+            previousMaxThreadEntries = defaultMaxThreadEntries;
+
+            // Do each thread entry in the storage amounts array.
+            for (int i = 0; i < storageAmounts.Length; i++)
+            {
+                // Do each storage amount entry in the storage amount list.
+                NativeList<StorageAmount> storageAmountList = storageAmounts[i];
+                for (int j = 0; j < storageAmountList.Length; j++)
+                {
+                    // Add storage amount from this entry to total.
+                    // Index into the total array is the resource index.
+                    StorageAmount storageAmountEntry = storageAmountList[j];
+                    int resourceIndex = Game.Economy.EconomyUtils.GetResourceIndex(storageAmountEntry.resource);
+                    total[resourceIndex] += storageAmountEntry.amount;
+                }
+
+                // Compute maximum thread entries.
+                if (storageAmountList.Length > previousMaxThreadEntries)
+                {
+                    previousMaxThreadEntries = storageAmountList.Length;
+                }
+                
+                // This storage amount list is no longer needed.
+                storageAmountList.Dispose();
+            }
+
+            // The storage amount array is no longer needed.
+            storageAmounts.Dispose();
+        }
+
+        /// <summary>
+        /// Get storage amounts.
+        /// </summary>
+        public void GetStorageAmounts(out int[] storageRequires, out int[] storageProduces, out int[] storageSells, out int[] storageStores)
+        {
+            // Initialize return arrays.
+            storageRequires = new int[_totalStorageRequires.Length];
+            storageProduces = new int[_totalStorageProduces.Length];
+            storageSells    = new int[_totalStorageSells   .Length];
+            storageStores   = new int[_totalStorageStores  .Length];
+
+            // Lock the thread while reading totals.
+            lock(_totalStorageStores)
+            {
+                // Copy storage amounts to return arrays.
+                Array.Copy(_totalStorageRequires, storageRequires, _totalStorageRequires.Length);
+                Array.Copy(_totalStorageProduces, storageProduces, _totalStorageProduces.Length);
+                Array.Copy(_totalStorageSells,    storageSells,    _totalStorageSells   .Length);
+                Array.Copy(_totalStorageStores,   storageStores,   _totalStorageStores  .Length);
+            }
         }
     }
 }

@@ -1,4 +1,28 @@
-﻿.resourceLocatorInfomodeButton {
+﻿.resourceLocatorInfomodeData {
+    margin-top:         0.5em;
+}
+
+.resourceLocatorInfomodeDataRow {
+    margin-top:         0;
+    display:            flex;
+    flex-direction:     row;
+    // Increase height with font size.
+    height:             calc(18rem + (10rem * (var(--fontScale) - 1)));
+}
+
+.resourceLocatorInfomodeDataRowHeading {
+    flex-grow:          1;
+}
+
+.resourceLocatorInfomodeDataRowValue {
+    text-align:         right;
+}
+
+.resourceLocatorInfomodeDataRowBottom {
+    margin-bottom:      0.5em;
+}
+
+.resourceLocatorInfomodeButton {
     // Default padding is 6rem on all sides.
     padding-top:        0rem;           // Leave less space on top.
     padding-left:       2rem;           // Leave less space on left.
@@ -22,7 +46,7 @@
     margin-right:       4rem;           // Space between color symbol and title.
 }
 
-.resourceLocatorInfomodeProducesBars {
+.resourceLocatorInfomodeBars {
     display:            flex;
     flex-direction:     row;
     flex-grow:          1;
@@ -32,11 +56,10 @@
     height:             18rem;
 }
 
-.resourceLocatorInfomodeProducesBar {
+.resourceLocatorInfomodeBarStorage, .resourceLocatorInfomodeBarProduces {
     margin-right:       4rem;
     height:             18rem;
     flex-grow:          1;
-    flex-basis:         32%;    // Less than 33.33% to provide space for right margin.
 
     // Copied from game's Production progress bars:
     background-color:   rgba(0, 0, 0, 0.22);
@@ -44,7 +67,18 @@
     position:           relative;
 }
 
-.resourceLocatorInfomodeProducesBarPercent {
+.resourceLocatorInfomodeBarStorage {
+    flex-basis:         98%;    // Less than 100% to provide space for a right margin.
+}
+
+.resourceLocatorInfomodeBarProduces {
+    flex-basis:         23%;    // Less than 25% to provide space for 4 right margins.
+}
+
+.resourceLocatorInfomodeBarPercentStorage,
+.resourceLocatorInfomodeBarPercentProduction,
+.resourceLocatorInfomodeBarPercentSurplus,
+.resourceLocatorInfomodeBarPercentDeficit {
     width:              100%;
     height:             100%;
     position:           relative;
@@ -53,7 +87,30 @@
     border-radius:      3rem;
 }
 
-.resourceLocatorInfomodeProducesBarCover {
+:root {
+    --resourceLocatorStorageColor:      rgba(192, 128, 0, 1);       // A shade of orange to use for storage bars.
+    --resourceLocatorProductionColor:   var(--progressColor);       // Color used on Production panel of City Economy view for the production bar.
+    --resourceLocatorSurplusColor:      var(--positiveColor);       // Color used on Production panel of City Economy view for the surplus    bar.
+    --resourceLocatorDeficitColor:      var(--negativeColor);       // Color used on Production panel of City Economy view for the deficit    bar.
+}
+
+.resourceLocatorInfomodeBarPercentStorage {
+    background-color:   var(--resourceLocatorStorageColor);
+}
+
+.resourceLocatorInfomodeBarPercentProduction {
+    background-color:   var(--resourceLocatorProductionColor);
+}
+
+.resourceLocatorInfomodeBarPercentSurplus {
+    background-color:   var(--resourceLocatorSurplusColor);
+}
+
+.resourceLocatorInfomodeBarPercentDeficit {
+    background-color:   var(--resourceLocatorDeficitColor);
+}
+
+.resourceLocatorInfomodeBarCover {
     width:              100%;
     height:             100%;
     position:           relative;
@@ -62,7 +119,7 @@
     background-color:   rgba(80, 80, 80, 1);
 }
 
-.resourceLocatorInfomodeProducesResourceLabel {
+.resourceLocatorInfomodeResourceLabel {
     position:           absolute;
     // Set top so that text is centered vertically based on font size.
     top:                calc(-2rem - (10rem * (var(--fontScale) - 1)));
@@ -70,15 +127,6 @@
     bottom:             0px;
     right:              0px;
     font-size:          var(--fontSizeS)
-}
-
-.resourceLocatorInfomodeGeneralResourceLabel {
-    // Set top margin to align general text with Produces text.
-    margin-top:         calc(-4rem - (15rem * (var(--fontScale) - 1)));
-    flex-grow:          1;
-    flex-shrink:        1;
-    font-size:          var(--fontSizeS);
-    height:             18rem;
 }
 
 .resourceLocatorInfomodeBuildingColor {

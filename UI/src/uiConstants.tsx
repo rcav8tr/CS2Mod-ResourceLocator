@@ -48,6 +48,7 @@ export enum RLBuildingType
     Meals                            = 246839,
     Entertainment                    = 246840,
     Recreation                       = 246841,
+    MaxValues                        = 246842,
 }
 
 // Define display options.

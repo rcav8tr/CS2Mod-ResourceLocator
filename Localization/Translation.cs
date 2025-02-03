@@ -38,7 +38,7 @@ namespace ResourceLocator
         //      A line with a translation key that starts with the character (#) is considered a comment and is skipped.
         //      The file should contain a line for every translation key constant name (not value) in UITranslationKey.
         //      Translations keys are case sensitive.
-        //      If a translation key is duplicated, then 2 new lines and the translated text are appended to the previous translated text for that key.
+        //      If a translation key is duplicated, then a newline and the translated text are appended to the previous translated text for that key.
         //      Any \n in the translated text is replaced with a newline.
         //      The file must not contain blank columns.
         //      Each language code, translation key, and translated text may or may not be enclosed in double quotes ("text").
@@ -433,8 +433,8 @@ namespace ResourceLocator
                         // Check if already have translated text.
                         if (temporaryTranslations[languageCode][translationKey].Length > 0)
                         {
-                            // Append 2 newlines and then the new translated text.
-                            temporaryTranslations[languageCode][translationKey] += Environment.NewLine + Environment.NewLine + translatedText;
+                            // Append a newline and then the new translated text.
+                            temporaryTranslations[languageCode][translationKey] += Environment.NewLine + translatedText;
                         }
                         else
                         {
@@ -447,8 +447,8 @@ namespace ResourceLocator
                         // Check if already have translated text.
                         if (languages[languageCode][translationKey].Length > 0)
                         {
-                            // Append 2 newlines and then the new translated text.
-                            languages[languageCode][translationKey] += Environment.NewLine + Environment.NewLine + translatedText;
+                            // Append a newline and then the new translated text.
+                            languages[languageCode][translationKey] += Environment.NewLine + translatedText;
                         }
                         else
                         {
