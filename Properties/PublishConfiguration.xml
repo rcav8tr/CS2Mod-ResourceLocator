@@ -3,7 +3,7 @@
 <!-- Make any needed changes in PublishConfiguration.csproj. -->
 
 <Publish>
-    <!-- Mod ID is not required for publishing a mod for the first time.  Mod ID must be set in order to update an existing mod. -->
+    <!-- Mod ID must be 0 for publishing a mod for the first time.  Mod ID must be set in order to update an existing mod. -->
     <ModId Value="99048" />
 
     <!-- Name of the mod to display to players.  Copied from assembly Title. -->
@@ -151,7 +151,7 @@ The following mods were used extensively in the development of this mod:
     <ForumLink Value="https://forum.paradoxplaza.com/forum/threads/resource-locator.1725428/" />
 
     <!-- Version of the mod.  Copied from assembly Version. -->
-    <ModVersion Value="1.2.0" />
+    <ModVersion Value="1.2.1" />
 
     <!-- Recommended version of the base game to use the mod. -->
     <GameVersion Value="1.*" />
@@ -159,13 +159,16 @@ The following mods were used extensively in the development of this mod:
     <!-- Dependency for the mod.  Can be set multiple times. -->
     <Dependency Id="" />
 
+    <!-- Required DLC.  Can be set multiple times. -->
+    <!-- Supported values are "Landmark Buildings", "San Fransisco Set", "Beach Properties", "Urban Promenades", "Modern Architecture" -->
+    <RequiredDLC Value="" />
+
     <!-- Change log.  Copied from ChangeLog.md file.  Supports minimal markdown subset. -->
     <ChangeLog>
-- Display storage amount for buildings that require, produce, sell, and store each resource.
-- Add settings to choose which special case buildings to include.
-- Fix conversion error from metric to US customary.
+- Update for game version 1.2.5f1.
 </ChangeLog>
 
-    <!-- External links. Supported types are discord, github, youtube, twitch, x, paypal, patreon, buymeacoffee, kofi, crowdin, gitlab.  Can be set multiple times. -->
+    <!-- External links.  Can be set multiple times. -->
+    <!-- Supported types are discord, github, youtube, twitch, x, paypal, patreon, buymeacoffee, kofi, crowdin, gitlab, gofundme. -->
     <ExternalLink Type="github" Url="https://github.com/rcav8tr/CS2Mod-ResourceLocator" />
 </Publish>
