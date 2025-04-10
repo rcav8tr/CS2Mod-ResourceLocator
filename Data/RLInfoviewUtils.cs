@@ -100,7 +100,7 @@ namespace ResourceLocator
             infomodePrefab.name = RLBuildingTypeUtils.GetBuildingTypeName(buildingType);
 
             // Set infomode color based on building type.
-            // Each color was taken manually from the corresponding resource icon.
+            // Except where noted, each color was taken manually from the corresponding resource icon.
             switch (buildingType)
             {
                 case RLBuildingType.Wood:               infomodePrefab.m_Color = GetColor(136,  77,  31); break;    // Dark part of the wood.
@@ -116,7 +116,7 @@ namespace ResourceLocator
                 case RLBuildingType.Metals:             infomodePrefab.m_Color = GetColor(138, 141, 143); break;    // Lighter of 2 colors.
                 case RLBuildingType.Steel:              infomodePrefab.m_Color = GetColor(182, 213, 236); break;    // Lighter of 2 colors.
                 case RLBuildingType.Minerals:           infomodePrefab.m_Color = GetColor( 10, 176, 153); break;    // Darkest of colors.
-                case RLBuildingType.Concrete:           infomodePrefab.m_Color = GetColor(200, 199, 199); break;    // Lightest of 3 colors.
+                case RLBuildingType.Concrete:           infomodePrefab.m_Color = GetColor(117,   0, 143); break;    // Ignore icon, use purple.
                 case RLBuildingType.Machinery:          infomodePrefab.m_Color = GetColor(150, 172, 183); break;    // Darker of 2 gears.
                 case RLBuildingType.Petrochemicals:     infomodePrefab.m_Color = GetColor(255, 221, 186); break;    // Lightest of 3 colors.
                 case RLBuildingType.Chemicals:          infomodePrefab.m_Color = GetColor(147, 226,  44); break;    // Green from flask.
