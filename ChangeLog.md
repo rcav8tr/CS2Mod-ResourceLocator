@@ -1,1 +1,1 @@
-﻿- Change resource color for Concrete.
+﻿- Fix handling of mod settings.
