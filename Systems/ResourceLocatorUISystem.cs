@@ -75,7 +75,7 @@ namespace ResourceLocator
         protected override void OnCreate()
         {
             base.OnCreate();
-            LogUtil.Info($"{nameof(ResourceLocatorUISystem)}.{nameof(OnCreate)}");
+            Mod.log.Info($"{nameof(ResourceLocatorUISystem)}.{nameof(OnCreate)}");
             
             try
             {
@@ -104,7 +104,7 @@ namespace ResourceLocator
             }
             catch (Exception ex)
             {
-                LogUtil.Exception(ex);
+                Mod.log.Error(ex);
             }
         }
         

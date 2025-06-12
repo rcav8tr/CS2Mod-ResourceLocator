@@ -160,7 +160,7 @@ namespace ResourceLocator
                     chunk.Has(ref ComponentTypeHandleGarbageFacility        ) ||
                     chunk.Has(ref ComponentTypeHandleHospital               ) ||
                     chunk.Has(ref ComponentTypeHandleIndustrialProperty     );      // For both industrial and office.
-
+                
                 // Get arrays from the chunk.
                 NativeArray<Entity                        > entities           = chunk.GetNativeArray(EntityTypeHandle);
                 NativeArray<Game.Prefabs.PrefabRef        > prefabRefs         = chunk.GetNativeArray(ref ComponentTypeHandlePrefabRef);
@@ -758,58 +758,6 @@ namespace ResourceLocator
         private EntityQuery _queryTempObject;
         private EntityQuery _querySubObject;
         private EntityQuery _queryActiveBuildingData;
-
-        // The component lookup and type handle for color.
-        // These are used to set building color.
-        private ComponentLookup    <Game.Objects.   Color                       > _componentLookupColor;
-        private ComponentTypeHandle<Game.Objects.   Color                       > _componentTypeHandleColor;
-
-        // Buffer lookups.
-        private BufferLookup<Game.Buildings.        Renter                      > _bufferLookupRenter;
-        private BufferLookup<Game.Economy.          Resources                   > _bufferLookupResources;
-
-        // Component lookups.
-        private ComponentLookup<Game.Buildings.     Building                    > _componentLookupBuilding;
-        private ComponentLookup<Game.Prefabs.       BuildingData                > _componentLookupBuildingData;
-        private ComponentLookup<Game.Prefabs.       BuildingPropertyData        > _componentLookupBuildingPropertyData;
-        private ComponentLookup<Game.Companies.     CompanyData                 > _componentLookupCompanyData;
-        private ComponentLookup<Game.Objects.       Elevation                   > _componentLookupElevation;
-        private ComponentLookup<Game.Companies.     ExtractorCompany            > _componentLookupExtractorCompany;
-        private ComponentLookup<Game.Prefabs.       IndustrialProcessData       > _componentLookupIndustrialProcessData;
-        private ComponentLookup<Game.Common.        Owner                       > _componentLookupOwner;
-        private ComponentLookup<Game.Prefabs.       PrefabRef                   > _componentLookupPrefabRef;
-        private ComponentLookup<Game.Companies.     ProcessingCompany           > _componentLookupProcessingCompany;
-        private ComponentLookup<Game.Companies.     ServiceAvailable            > _componentLookupServiceAvailable;
-        private ComponentLookup<Game.Companies.     StorageCompany              > _componentLookupStorageCompany;
-        private ComponentLookup<Game.Prefabs.       StorageCompanyData          > _componentLookupStorageCompanyData;
-        private ComponentLookup<Game.Vehicles.      Vehicle                     > _componentLookupVehicle;
-
-        // Component type handles for buildings.
-        private ComponentTypeHandle<Game.Buildings. CargoTransportStation       > _componentTypeHandleCargoTransportStation;
-        private ComponentTypeHandle<Game.Buildings. CommercialProperty          > _componentTypeHandleCommercialProperty;
-        private ComponentTypeHandle<Game.Buildings. ElectricityProducer         > _componentTypeHandleElectricityProducer;
-        private ComponentTypeHandle<Game.Buildings. EmergencyShelter            > _componentTypeHandleEmergencyShelter;
-        private ComponentTypeHandle<Game.Buildings. GarbageFacility             > _componentTypeHandleGarbageFacility;
-        private ComponentTypeHandle<Game.Buildings. Hospital                    > _componentTypeHandleHospital;
-        private ComponentTypeHandle<Game.Buildings. IndustrialProperty          > _componentTypeHandleIndustrialProperty;
-        private ComponentTypeHandle<Game.Buildings. ResourceProducer            > _componentTypeHandleResourceProducer;
-
-        // Component type handles for miscellaneous.
-        private ComponentTypeHandle<Game.Objects.   Attachment                  > _componentTypeHandleAttachment;
-        private ComponentTypeHandle<Game.Areas.     CurrentDistrict             > _componentTypeHandleCurrentDistrict;
-        private ComponentTypeHandle<Game.Common.    Destroyed                   > _componentTypeHandleDestroyed;
-        private ComponentTypeHandle<Game.Objects.   Elevation                   > _componentTypeHandleElevation;
-        private ComponentTypeHandle<Game.Prefabs.   InfomodeActive              > _componentTypeHandleInfomodeActive;
-        private ComponentTypeHandle<Game.Prefabs.   InfoviewBuildingData        > _componentTypeHandleInfoviewBuildingData;
-        private ComponentTypeHandle<Game.Objects.   OutsideConnection           > _componentTypeHandleOutsideConnection;
-        private ComponentTypeHandle<Game.Common.    Owner                       > _componentTypeHandleOwner;
-        private ComponentTypeHandle<Game.Prefabs.   PrefabRef                   > _componentTypeHandlePrefabRef;
-        private ComponentTypeHandle<Game.Tools.     Temp                        > _componentTypeHandleTemp;
-        private ComponentTypeHandle<Game.Objects.   Tree                        > _componentTypeHandleTree;
-        private ComponentTypeHandle<Game.Objects.   UnderConstruction           > _componentTypeHandleUnderConstruction;
-
-        // Entity type handle.
-        private EntityTypeHandle _entityTypeHandle;
         
         // Harmony ID.
         private const string HarmonyID = "rcav8tr." + ModAssemblyInfo.Name;
@@ -831,74 +779,13 @@ namespace ResourceLocator
         private readonly object _totalStorageLock = new object();
 
         /// <summary>
-        /// Called before OnCreate.
-        /// </summary>
-        protected override void OnCreateForCompiler()
-        {
-            base.OnCreateForCompiler();
-            LogUtil.Info($"{nameof(BuildingColorSystem)}.{nameof(OnCreateForCompiler)}");
-
-            // Assign components for color.
-            // These are the only ones that are read/write.
-            _componentLookupColor                           = CheckedStateRef.GetComponentLookup    <Game.Objects.      Color                       >();
-            _componentTypeHandleColor                       = CheckedStateRef.GetComponentTypeHandle<Game.Objects.      Color                       >();
-
-            // Assign buffer lookups.
-            _bufferLookupRenter                             = CheckedStateRef.GetBufferLookup<Game.Buildings.           Renter                      >(true);
-            _bufferLookupResources                          = CheckedStateRef.GetBufferLookup<Game.Economy.             Resources                   >(true);
-
-            // Assign component lookups.
-            _componentLookupBuilding                        = CheckedStateRef.GetComponentLookup<Game.Buildings.        Building                    >(true);
-            _componentLookupBuildingData                    = CheckedStateRef.GetComponentLookup<Game.Prefabs.          BuildingData                >(true);
-            _componentLookupBuildingPropertyData            = CheckedStateRef.GetComponentLookup<Game.Prefabs.          BuildingPropertyData        >(true);
-            _componentLookupCompanyData                     = CheckedStateRef.GetComponentLookup<Game.Companies.        CompanyData                 >(true);
-            _componentLookupElevation                       = CheckedStateRef.GetComponentLookup<Game.Objects.          Elevation                   >(true);
-            _componentLookupExtractorCompany                = CheckedStateRef.GetComponentLookup<Game.Companies.        ExtractorCompany            >(true);
-            _componentLookupIndustrialProcessData           = CheckedStateRef.GetComponentLookup<Game.Prefabs.          IndustrialProcessData       >(true);
-            _componentLookupOwner                           = CheckedStateRef.GetComponentLookup<Game.Common.           Owner                       >(true);
-            _componentLookupPrefabRef                       = CheckedStateRef.GetComponentLookup<Game.Prefabs.          PrefabRef                   >(true);
-            _componentLookupProcessingCompany               = CheckedStateRef.GetComponentLookup<Game.Companies.        ProcessingCompany           >(true);
-            _componentLookupServiceAvailable                = CheckedStateRef.GetComponentLookup<Game.Companies.        ServiceAvailable            >(true);
-            _componentLookupStorageCompany                  = CheckedStateRef.GetComponentLookup<Game.Companies.        StorageCompany              >(true);
-            _componentLookupStorageCompanyData              = CheckedStateRef.GetComponentLookup<Game.Prefabs.          StorageCompanyData          >(true);
-            _componentLookupVehicle                         = CheckedStateRef.GetComponentLookup<Game.Vehicles.         Vehicle                     >(true);
-
-            // Assign component type handles for buildings.
-            _componentTypeHandleCargoTransportStation       = CheckedStateRef.GetComponentTypeHandle<Game.Buildings.    CargoTransportStation       >(true);
-            _componentTypeHandleCommercialProperty          = CheckedStateRef.GetComponentTypeHandle<Game.Buildings.    CommercialProperty          >(true);
-            _componentTypeHandleElectricityProducer         = CheckedStateRef.GetComponentTypeHandle<Game.Buildings.    ElectricityProducer         >(true);
-            _componentTypeHandleEmergencyShelter            = CheckedStateRef.GetComponentTypeHandle<Game.Buildings.    EmergencyShelter            >(true);
-            _componentTypeHandleGarbageFacility             = CheckedStateRef.GetComponentTypeHandle<Game.Buildings.    GarbageFacility             >(true);
-            _componentTypeHandleHospital                    = CheckedStateRef.GetComponentTypeHandle<Game.Buildings.    Hospital                    >(true);
-            _componentTypeHandleIndustrialProperty          = CheckedStateRef.GetComponentTypeHandle<Game.Buildings.    IndustrialProperty          >(true);
-            _componentTypeHandleResourceProducer            = CheckedStateRef.GetComponentTypeHandle<Game.Buildings.    ResourceProducer            >(true);
-
-            // Assign component type handles for miscellaneous.
-            _componentTypeHandleAttachment                  = CheckedStateRef.GetComponentTypeHandle<Game.Objects.      Attachment                  >(true);
-            _componentTypeHandleCurrentDistrict             = CheckedStateRef.GetComponentTypeHandle<Game.Areas.        CurrentDistrict             >(true);
-            _componentTypeHandleDestroyed                   = CheckedStateRef.GetComponentTypeHandle<Game.Common.       Destroyed                   >(true);
-            _componentTypeHandleElevation                   = CheckedStateRef.GetComponentTypeHandle<Game.Objects.      Elevation                   >(true);
-            _componentTypeHandleInfomodeActive              = CheckedStateRef.GetComponentTypeHandle<Game.Prefabs.      InfomodeActive              >(true);
-            _componentTypeHandleInfoviewBuildingData        = CheckedStateRef.GetComponentTypeHandle<Game.Prefabs.      InfoviewBuildingData        >(true);
-            _componentTypeHandleOutsideConnection           = CheckedStateRef.GetComponentTypeHandle<Game.Objects.      OutsideConnection           >(true);
-            _componentTypeHandleOwner                       = CheckedStateRef.GetComponentTypeHandle<Game.Common.       Owner                       >(true);
-            _componentTypeHandlePrefabRef                   = CheckedStateRef.GetComponentTypeHandle<Game.Prefabs.      PrefabRef                   >(true);
-            _componentTypeHandleTemp                        = CheckedStateRef.GetComponentTypeHandle<Game.Tools.        Temp                        >(true);
-            _componentTypeHandleTree                        = CheckedStateRef.GetComponentTypeHandle<Game.Objects.      Tree                        >(true);
-            _componentTypeHandleUnderConstruction           = CheckedStateRef.GetComponentTypeHandle<Game.Objects.      UnderConstruction           >(true);
-
-            // Assign entity type handle.
-            _entityTypeHandle = CheckedStateRef.GetEntityTypeHandle();
-        }
-
-        /// <summary>
         /// Initialize this system.
         /// </summary>
         [Preserve]
         protected override void OnCreate()
         {
             base.OnCreate();
-            LogUtil.Info($"{nameof(BuildingColorSystem)}.{nameof(OnCreate)}");
+            Mod.log.Info($"{nameof(BuildingColorSystem)}.{nameof(OnCreate)}");
 
             // Save the game's instance of this system.
             _buildingColorSystem = this;
@@ -1070,13 +957,13 @@ namespace ResourceLocator
             MethodInfo originalMethod = typeof(Game.Rendering.ObjectColorSystem).GetMethod("OnUpdate", BindingFlags.Instance | BindingFlags.NonPublic);
             if (originalMethod == null)
             {
-                LogUtil.Error($"Unable to find original method {nameof(Game.Rendering.ObjectColorSystem)}.OnUpdate.");
+                Mod.log.Error($"Unable to find original method {nameof(Game.Rendering.ObjectColorSystem)}.OnUpdate.");
                 return;
             }
             MethodInfo prefixMethod = typeof(BuildingColorSystem).GetMethod(nameof(OnUpdatePrefix), BindingFlags.Static | BindingFlags.NonPublic);
             if (prefixMethod == null)
             {
-                LogUtil.Error($"Unable to find patch prefix method {nameof(BuildingColorSystem)}.{nameof(OnUpdatePrefix)}.");
+                Mod.log.Error($"Unable to find patch prefix method {nameof(BuildingColorSystem)}.{nameof(OnUpdatePrefix)}.");
                 return;
             }
             new Harmony(HarmonyID).Patch(originalMethod, new HarmonyMethod(prefixMethod), null);
@@ -1122,23 +1009,22 @@ namespace ResourceLocator
 
 
             // Create a job to update default colors.
-            _componentTypeHandleColor.Update(ref CheckedStateRef);
             UpdateColorsJobDefault updateColorsJobDefault = new UpdateColorsJobDefault()
             {
-                ComponentTypeHandleColor = _componentTypeHandleColor,
+                ComponentTypeHandleColor = SystemAPI.GetComponentTypeHandle<Game.Objects.Color>(false),
             };
 
 
             // Create native array of active infomodes.
-            _componentTypeHandleInfoviewBuildingData.Update(ref CheckedStateRef);
-            _componentTypeHandleInfomodeActive      .Update(ref CheckedStateRef);
+            ComponentTypeHandle<Game.Prefabs.InfoviewBuildingData> componentTypeHandleInfoviewBuildingData = SystemAPI.GetComponentTypeHandle<Game.Prefabs.InfoviewBuildingData>(true);
+            ComponentTypeHandle<Game.Prefabs.InfomodeActive      > componentTypeHandleInfomodeActive       = SystemAPI.GetComponentTypeHandle<Game.Prefabs.InfomodeActive      >(true);
             List<ActiveInfomode> tempActiveInfomodes = new List<ActiveInfomode>();
             NativeArray<ArchetypeChunk> tempActiveBuildingDataChunks = _queryActiveBuildingData.ToArchetypeChunkArray(Allocator.TempJob);
             foreach (ArchetypeChunk activeBuildingDataChunk in tempActiveBuildingDataChunks)
             {
                 // Do each active building data.
-                NativeArray<Game.Prefabs.InfoviewBuildingData> infoviewBuildingDatas = activeBuildingDataChunk.GetNativeArray(ref _componentTypeHandleInfoviewBuildingData);
-                NativeArray<Game.Prefabs.InfomodeActive      > infomodeActives       = activeBuildingDataChunk.GetNativeArray(ref _componentTypeHandleInfomodeActive);
+                NativeArray<Game.Prefabs.InfoviewBuildingData> infoviewBuildingDatas = activeBuildingDataChunk.GetNativeArray(ref componentTypeHandleInfoviewBuildingData);
+                NativeArray<Game.Prefabs.InfomodeActive      > infomodeActives       = activeBuildingDataChunk.GetNativeArray(ref componentTypeHandleInfomodeActive);
                 for (int j = 0; j < infoviewBuildingDatas.Length; j++)
                 {
                     // Skip special cases.
@@ -1183,75 +1069,41 @@ namespace ResourceLocator
                 storageAmountStores  [i] = new NativeList<StorageAmount>(_previousMaxThreadEntriesStorageStores,   Allocator.TempJob);
             }
 
-            // Update buffers and components for main building colors job.
-            _componentTypeHandleColor                       .Update(ref CheckedStateRef);
-
-            _bufferLookupRenter                             .Update(ref CheckedStateRef);
-            _bufferLookupResources                          .Update(ref CheckedStateRef);
-            
-            _componentLookupBuildingData                    .Update(ref CheckedStateRef);
-            _componentLookupBuildingPropertyData            .Update(ref CheckedStateRef);
-            _componentLookupCompanyData                     .Update(ref CheckedStateRef);
-            _componentLookupExtractorCompany                .Update(ref CheckedStateRef);
-            _componentLookupIndustrialProcessData           .Update(ref CheckedStateRef);
-            _componentLookupPrefabRef                       .Update(ref CheckedStateRef);
-            _componentLookupProcessingCompany               .Update(ref CheckedStateRef);
-            _componentLookupServiceAvailable                .Update(ref CheckedStateRef);
-            _componentLookupStorageCompany                  .Update(ref CheckedStateRef);
-            _componentLookupStorageCompanyData              .Update(ref CheckedStateRef);
-            
-            _componentTypeHandleCargoTransportStation       .Update(ref CheckedStateRef);
-            _componentTypeHandleCommercialProperty          .Update(ref CheckedStateRef);
-            _componentTypeHandleElectricityProducer         .Update(ref CheckedStateRef);
-            _componentTypeHandleEmergencyShelter            .Update(ref CheckedStateRef);
-            _componentTypeHandleGarbageFacility             .Update(ref CheckedStateRef);
-            _componentTypeHandleHospital                    .Update(ref CheckedStateRef);
-            _componentTypeHandleIndustrialProperty          .Update(ref CheckedStateRef);
-            _componentTypeHandleResourceProducer            .Update(ref CheckedStateRef);
-            
-            _componentTypeHandleCurrentDistrict             .Update(ref CheckedStateRef);
-            _componentTypeHandleDestroyed                   .Update(ref CheckedStateRef);
-            _componentTypeHandleOutsideConnection           .Update(ref CheckedStateRef);
-            _componentTypeHandlePrefabRef                   .Update(ref CheckedStateRef);
-            _componentTypeHandleUnderConstruction           .Update(ref CheckedStateRef);
-
-            _entityTypeHandle                               .Update(ref CheckedStateRef);
-
             // Create a job to update main building colors.
             UpdateColorsJobMainBuilding updateColorsJobMainBuilding = new UpdateColorsJobMainBuilding()
             {
-                ComponentTypeHandleColor                        = _componentTypeHandleColor,
+                ComponentTypeHandleColor                        = SystemAPI.GetComponentTypeHandle<Game.Objects.Color>(false),
 
-                BufferLookupRenter                              = _bufferLookupRenter,
-                BufferLookupResources                           = _bufferLookupResources,
+                BufferLookupRenter                              = SystemAPI.GetBufferLookup<Game.Buildings.         Renter                      >(true),
+                BufferLookupResources                           = SystemAPI.GetBufferLookup<Game.Economy.           Resources                   >(true),
                 
-                ComponentLookupBuildingData                     = _componentLookupBuildingData,
-                ComponentLookupBuildingPropertyData             = _componentLookupBuildingPropertyData,
-                ComponentLookupCompanyData                      = _componentLookupCompanyData,
-                ComponentLookupExtractorCompany                 = _componentLookupExtractorCompany,
-                ComponentLookupIndustrialProcessData            = _componentLookupIndustrialProcessData,
-                ComponentLookupPrefabRef                        = _componentLookupPrefabRef,
-                ComponentLookupProcessingCompany                = _componentLookupProcessingCompany,
-                ComponentLookupServiceAvailable                 = _componentLookupServiceAvailable,
-                ComponentLookupStorageCompany                   = _componentLookupStorageCompany,
-                ComponentLookupStorageCompanyData               = _componentLookupStorageCompanyData,
+                ComponentLookupBuildingData                     = SystemAPI.GetComponentLookup<Game.Prefabs.        BuildingData                >(true),
+                ComponentLookupBuildingPropertyData             = SystemAPI.GetComponentLookup<Game.Prefabs.        BuildingPropertyData        >(true),
+                ComponentLookupCompanyData                      = SystemAPI.GetComponentLookup<Game.Companies.      CompanyData                 >(true),
+                ComponentLookupExtractorCompany                 = SystemAPI.GetComponentLookup<Game.Companies.      ExtractorCompany            >(true),
+                ComponentLookupIndustrialProcessData            = SystemAPI.GetComponentLookup<Game.Prefabs.        IndustrialProcessData       >(true),
+                ComponentLookupPrefabRef                        = SystemAPI.GetComponentLookup<Game.Prefabs.        PrefabRef                   >(true),
+                ComponentLookupProcessingCompany                = SystemAPI.GetComponentLookup<Game.Companies.      ProcessingCompany           >(true),
+                ComponentLookupServiceAvailable                 = SystemAPI.GetComponentLookup<Game.Companies.      ServiceAvailable            >(true),
+                ComponentLookupStorageCompany                   = SystemAPI.GetComponentLookup<Game.Companies.      StorageCompany              >(true),
+                ComponentLookupStorageCompanyData               = SystemAPI.GetComponentLookup<Game.Prefabs.        StorageCompanyData          >(true),
                 
-                ComponentTypeHandleCargoTransportStation        = _componentTypeHandleCargoTransportStation,
-                ComponentTypeHandleCommercialProperty           = _componentTypeHandleCommercialProperty,
-                ComponentTypeHandleElectricityProducer          = _componentTypeHandleElectricityProducer,
-                ComponentTypeHandleEmergencyShelter             = _componentTypeHandleEmergencyShelter,
-                ComponentTypeHandleGarbageFacility              = _componentTypeHandleGarbageFacility,
-                ComponentTypeHandleHospital                     = _componentTypeHandleHospital,
-                ComponentTypeHandleIndustrialProperty           = _componentTypeHandleIndustrialProperty,
-                ComponentTypeHandleResourceProducer             = _componentTypeHandleResourceProducer,
+                ComponentTypeHandleCargoTransportStation        = SystemAPI.GetComponentTypeHandle<Game.Buildings.  CargoTransportStation       >(true),
+                ComponentTypeHandleCommercialProperty           = SystemAPI.GetComponentTypeHandle<Game.Buildings.  CommercialProperty          >(true),
+                ComponentTypeHandleElectricityProducer          = SystemAPI.GetComponentTypeHandle<Game.Buildings.  ElectricityProducer         >(true),
+                ComponentTypeHandleEmergencyShelter             = SystemAPI.GetComponentTypeHandle<Game.Buildings.  EmergencyShelter            >(true),
+                ComponentTypeHandleGarbageFacility              = SystemAPI.GetComponentTypeHandle<Game.Buildings.  GarbageFacility             >(true),
+                ComponentTypeHandleHospital                     = SystemAPI.GetComponentTypeHandle<Game.Buildings.  Hospital                    >(true),
+                ComponentTypeHandleIndustrialProperty           = SystemAPI.GetComponentTypeHandle<Game.Buildings.  IndustrialProperty          >(true),
+                ComponentTypeHandleResourceProducer             = SystemAPI.GetComponentTypeHandle<Game.Buildings.  ResourceProducer            >(true),
 
-                ComponentTypeHandleCurrentDistrict              = _componentTypeHandleCurrentDistrict,
-                ComponentTypeHandleDestroyed                    = _componentTypeHandleDestroyed,
-                ComponentTypeHandleOutsideConnection            = _componentTypeHandleOutsideConnection,
-                ComponentTypeHandlePrefabRef                    = _componentTypeHandlePrefabRef,
-                ComponentTypeHandleUnderConstruction            = _componentTypeHandleUnderConstruction,
+                ComponentTypeHandleCurrentDistrict              = SystemAPI.GetComponentTypeHandle<Game.Areas.      CurrentDistrict             >(true),
+                ComponentTypeHandleDestroyed                    = SystemAPI.GetComponentTypeHandle<Game.Common.     Destroyed                   >(true),
+                ComponentTypeHandleOutsideConnection            = SystemAPI.GetComponentTypeHandle<Game.Objects.    OutsideConnection           >(true),
+                ComponentTypeHandlePrefabRef                    = SystemAPI.GetComponentTypeHandle<Game.Prefabs.    PrefabRef                   >(true),
+                ComponentTypeHandleUnderConstruction            = SystemAPI.GetComponentTypeHandle<Game.Objects.    UnderConstruction           >(true),
                 
-                EntityTypeHandle                                = _entityTypeHandle,
+                EntityTypeHandle                                = SystemAPI.GetEntityTypeHandle(),
                 
                 ActiveInfomodes                                 = activeInfomodes,
                 
@@ -1275,62 +1127,44 @@ namespace ResourceLocator
 
 
             // Create a job to update middle building colors.
-            _componentLookupColor       .Update(ref CheckedStateRef);
-            _componentTypeHandleOwner   .Update(ref CheckedStateRef);
-            _entityTypeHandle           .Update(ref CheckedStateRef);
             UpdateColorsJobMiddleBuilding updateColorsJobMiddleBuilding = new UpdateColorsJobMiddleBuilding()
             {
-                ComponentLookupColor        = _componentLookupColor,
-                ComponentTypeHandleOwner    = _componentTypeHandleOwner,
-                EntityTypeHandle            = _entityTypeHandle,
+                ComponentLookupColor        = SystemAPI.GetComponentLookup<Game.Objects.Color>(false),
+                ComponentTypeHandleOwner    = SystemAPI.GetComponentTypeHandle<Game.Common.Owner>(true),
+                EntityTypeHandle            = SystemAPI.GetEntityTypeHandle(),
             };
 
 
             // Create a job to update attachment building colors.
-            _componentLookupColor           .Update(ref CheckedStateRef);
-            _componentTypeHandleAttachment  .Update(ref CheckedStateRef);
-            _entityTypeHandle               .Update(ref CheckedStateRef);
             UpdateColorsJobAttachmentBuilding updateColorsJobAttachmentBuilding = new UpdateColorsJobAttachmentBuilding()
             {
-                ComponentLookupColor            = _componentLookupColor,
-                ComponentTypeHandleAttachment   = _componentTypeHandleAttachment,
-                EntityTypeHandle                = _entityTypeHandle,
+                ComponentLookupColor            = SystemAPI.GetComponentLookup<Game.Objects.Color>(false),
+                ComponentTypeHandleAttachment   = SystemAPI.GetComponentTypeHandle<Game.Objects.Attachment>(true),
+                EntityTypeHandle                = SystemAPI.GetEntityTypeHandle(),
             };
 
 
             // Create a job to update temp object colors.
-            _componentLookupColor       .Update(ref CheckedStateRef);
-            _componentTypeHandleTemp    .Update(ref CheckedStateRef);
-            _entityTypeHandle           .Update(ref CheckedStateRef);
             UpdateColorsJobTempObject updateColorsJobTempObject = new UpdateColorsJobTempObject()
             {
-                ComponentLookupColor    = _componentLookupColor,
-                ComponentTypeHandleTemp = _componentTypeHandleTemp,
-                EntityTypeHandle        = _entityTypeHandle,
+                ComponentLookupColor    = SystemAPI.GetComponentLookup<Game.Objects.Color>(false),
+                ComponentTypeHandleTemp = SystemAPI.GetComponentTypeHandle<Game.Tools.Temp>(true),
+                EntityTypeHandle        = SystemAPI.GetEntityTypeHandle(),
             };
 
             
             // Create a job to update sub object colors.
-            _componentLookupColor           .Update(ref CheckedStateRef);
-            _componentLookupBuilding        .Update(ref CheckedStateRef);
-            _componentLookupElevation       .Update(ref CheckedStateRef);
-            _componentLookupOwner           .Update(ref CheckedStateRef);
-            _componentLookupVehicle         .Update(ref CheckedStateRef);
-            _componentTypeHandleElevation   .Update(ref CheckedStateRef);
-            _componentTypeHandleOwner       .Update(ref CheckedStateRef);
-            _componentTypeHandleTree        .Update(ref CheckedStateRef);
-            _entityTypeHandle               .Update(ref CheckedStateRef);
             UpdateColorsJobSubObject updateColorsJobSubObject = new UpdateColorsJobSubObject()
             {
-                ComponentLookupColor            = _componentLookupColor,
-                ComponentLookupBuilding         = _componentLookupBuilding,
-                ComponentLookupElevation        = _componentLookupElevation,
-                ComponentLookupOwner            = _componentLookupOwner,
-                ComponentLookupVehicle          = _componentLookupVehicle,
-                ComponentTypeHandleElevation    = _componentTypeHandleElevation,
-                ComponentTypeHandleOwner        = _componentTypeHandleOwner,
-                ComponentTypeHandleTree         = _componentTypeHandleTree,
-                EntityTypeHandle                = _entityTypeHandle,
+                ComponentLookupColor            = SystemAPI.GetComponentLookup<Game.Objects.Color>(false),
+                ComponentLookupBuilding         = SystemAPI.GetComponentLookup<Game.Buildings.      Building    >(true),
+                ComponentLookupElevation        = SystemAPI.GetComponentLookup<Game.Objects.        Elevation   >(true),
+                ComponentLookupOwner            = SystemAPI.GetComponentLookup<Game.Common.         Owner       >(true),
+                ComponentLookupVehicle          = SystemAPI.GetComponentLookup<Game.Vehicles.       Vehicle     >(true),
+                ComponentTypeHandleElevation    = SystemAPI.GetComponentTypeHandle<Game.Objects.    Elevation   >(true),
+                ComponentTypeHandleOwner        = SystemAPI.GetComponentTypeHandle<Game.Common.     Owner       >(true),
+                ComponentTypeHandleTree         = SystemAPI.GetComponentTypeHandle<Game.Objects.    Tree        >(true),
+                EntityTypeHandle                = SystemAPI.GetEntityTypeHandle(),
             };
 
 

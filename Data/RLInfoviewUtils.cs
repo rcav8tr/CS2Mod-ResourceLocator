@@ -19,7 +19,7 @@ namespace ResourceLocator
         /// </summary>
         public static void Initialize()
         {
-            LogUtil.Info($"{nameof(RLInfoviewUtils)}.{nameof(Initialize)}");
+            Mod.log.Info($"{nameof(RLInfoviewUtils)}.{nameof(Initialize)}");
             
             try
             {
@@ -29,7 +29,7 @@ namespace ResourceLocator
                 InfoviewInitializeSystem infoviewInitializeSystem = defaultWorld.GetOrCreateSystemManaged<InfoviewInitializeSystem>();
                 if (infoviewInitializeSystem == null || infoviewInitializeSystem.infoviews.Count() == 0)
                 {
-                    LogUtil.Error("The game's infoviews must be created before this mod's infoview.");
+                    Mod.log.Error("The game's infoviews must be created before this mod's infoview.");
                     return;
                 }
 
@@ -81,7 +81,7 @@ namespace ResourceLocator
             }
             catch (Exception ex)
             {
-                LogUtil.Exception(ex);
+                Mod.log.Error(ex);
             }
         }
 

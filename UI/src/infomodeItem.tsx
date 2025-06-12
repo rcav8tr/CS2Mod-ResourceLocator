@@ -76,18 +76,18 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     const displayOption = useValue(bindingDisplayOption);
 
     // Define variables for storage and rate values for this resource.
-    var valueStorageRequires:   number = 0;
-    var valueStorageProduces:   number = 0;
-    var valueStorageSells:      number = 0;
-    var valueStorageStores:     number = 0;
+    let valueStorageRequires:   number = 0;
+    let valueStorageProduces:   number = 0;
+    let valueStorageSells:      number = 0;
+    let valueStorageStores:     number = 0;
 
-    var valueRateProduction:    number = 0;
-    var valueRateSurplus:       number = 0;
-    var valueRateDeficit:       number = 0;
+    let valueRateProduction:    number = 0;
+    let valueRateSurplus:       number = 0;
+    let valueRateDeficit:       number = 0;
 
     // Do each resource info.
     const resourceInfos: ResourceInfo[] = useValue(bindingResourceInfos);
-    for (var i: number = 0; i < resourceInfos.length; i++)
+    for (let i: number = 0; i < resourceInfos.length; i++)
     {
         // Check if building type of the resource info is for the building type of this infomode.
         const resourceInfo: ResourceInfo = resourceInfos[i];
@@ -110,8 +110,8 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     }
 
     // Get max storage and rate values from the last resource info, which should be MaxValues.
-    var valueStorageMaxAll: number = 0;
-    var valueRateMaxAll:    number = 0;
+    let valueStorageMaxAll: number = 0;
+    let valueRateMaxAll:    number = 0;
     const maxResourceInfo: ResourceInfo = resourceInfos[resourceInfos.length - 1];
     if (maxResourceInfo.buildingType === RLBuildingType.MaxValues)
     {
@@ -144,7 +144,7 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     }
 
     // Compute a percent for the storage value compared to the max of all storage values for the current display option.
-    var percentStorage: number = 0;
+    let percentStorage: number = 0;
     switch (displayOption)
     {
         case DisplayOption.Requires: percentStorage = ComputePercent(valueStorageRequires, valueStorageMaxAll); break;
@@ -194,10 +194,10 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     // Get scaling factor and unit of measure prefix and text for storage and rates values.
     // Scalling factor and UOM prefix are the same between storage and rate.
     // UOM text is different between storage and rate.
-    var scalingFactor:  number = 1;
-    var uomPrefix:      string | null = null;
-    var storageUOMText: string | null = null;
-    var rateUOMText:    string | null = null;
+    let scalingFactor:  number = 1;
+    let uomPrefix:      string | null = null;
+    let storageUOMText: string | null = null;
+    let rateUOMText:    string | null = null;
     if (valueUnitSettings.unitSystem === UnitSystem.Metric)
     {
         // Check scale of max value.

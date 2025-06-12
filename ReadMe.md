@@ -48,6 +48,7 @@ Hover the cursor over a resource to get detailed information about that resource
   The resource with the largest amount stored has a full bar and the other bars are sized relative to that one.
 - Current production rate and surplus/deficit rate of this resource.
   Rates are for the entire city, even if a district is selected.
+  The simulation must run for a bit for the rates to be updated by the game.
 - For the Produces Display Option, the production, surplus, and deficit rates are also shown in the blue, green, and red bars behind the resource name.
   The resource with the largest production, surplus, or deficit has a full bar and the other bars are sized relative to that one.
 - Most of the above is the same information available on the Production tab of the City Economy view.
