@@ -16,6 +16,7 @@ export class UITranslationKey
     public static InfomodeTitleWood                                 : string = "Infoviews.INFOMODE[ResourceLocatorWood]";
     public static InfomodeTitleGrain                                : string = "Infoviews.INFOMODE[ResourceLocatorGrain]";
     public static InfomodeTitleLivestock                            : string = "Infoviews.INFOMODE[ResourceLocatorLivestock]";
+    public static InfomodeTitleFish                                 : string = "Infoviews.INFOMODE[ResourceLocatorFish]";
     public static InfomodeTitleVegetables                           : string = "Infoviews.INFOMODE[ResourceLocatorVegetables]";
     public static InfomodeTitleCotton                               : string = "Infoviews.INFOMODE[ResourceLocatorCotton]";
     public static InfomodeTitleOil                                  : string = "Infoviews.INFOMODE[ResourceLocatorOil]";
@@ -53,6 +54,7 @@ export class UITranslationKey
     public static InfomodeTooltipWood                               : string = "Infoviews.INFOMODE_TOOLTIP[ResourceLocatorWood]";
     public static InfomodeTooltipGrain                              : string = "Infoviews.INFOMODE_TOOLTIP[ResourceLocatorGrain]";
     public static InfomodeTooltipLivestock                          : string = "Infoviews.INFOMODE_TOOLTIP[ResourceLocatorLivestock]";
+    public static InfomodeTooltipFish                               : string = "Infoviews.INFOMODE_TOOLTIP[ResourceLocatorFish]";
     public static InfomodeTooltipVegetables                         : string = "Infoviews.INFOMODE_TOOLTIP[ResourceLocatorVegetables]";
     public static InfomodeTooltipCotton                             : string = "Infoviews.INFOMODE_TOOLTIP[ResourceLocatorCotton]";
     public static InfomodeTooltipOil                                : string = "Infoviews.INFOMODE_TOOLTIP[ResourceLocatorOil]";

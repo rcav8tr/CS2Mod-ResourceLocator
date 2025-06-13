@@ -20,6 +20,7 @@ namespace ResourceLocator
         Wood,
         Grain,
         Livestock,
+        Fish,
         Vegetables,
         Cotton,
         Oil,         // "Crude Oil"
@@ -72,6 +73,7 @@ namespace ResourceLocator
             { RLBuildingType.Wood,            Resource.Wood            },
             { RLBuildingType.Grain,           Resource.Grain           },
             { RLBuildingType.Livestock,       Resource.Livestock       },
+            { RLBuildingType.Fish,            Resource.Fish            },
             { RLBuildingType.Vegetables,      Resource.Vegetables      },
             { RLBuildingType.Cotton,          Resource.Cotton          },
             { RLBuildingType.Oil,             Resource.Oil             },

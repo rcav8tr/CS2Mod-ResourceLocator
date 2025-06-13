@@ -18,6 +18,7 @@ namespace ResourceLocator
         public const string InfomodeTitleWood                                  = "Infoviews.INFOMODE[ResourceLocatorWood]";
         public const string InfomodeTitleGrain                                 = "Infoviews.INFOMODE[ResourceLocatorGrain]";
         public const string InfomodeTitleLivestock                             = "Infoviews.INFOMODE[ResourceLocatorLivestock]";
+        public const string InfomodeTitleFish                                  = "Infoviews.INFOMODE[ResourceLocatorFish]";
         public const string InfomodeTitleVegetables                            = "Infoviews.INFOMODE[ResourceLocatorVegetables]";
         public const string InfomodeTitleCotton                                = "Infoviews.INFOMODE[ResourceLocatorCotton]";
         public const string InfomodeTitleOil                                   = "Infoviews.INFOMODE[ResourceLocatorOil]";
@@ -55,6 +56,7 @@ namespace ResourceLocator
         public const string InfomodeTooltipWood                                = "Infoviews.INFOMODE_TOOLTIP[ResourceLocatorWood]";
         public const string InfomodeTooltipGrain                               = "Infoviews.INFOMODE_TOOLTIP[ResourceLocatorGrain]";
         public const string InfomodeTooltipLivestock                           = "Infoviews.INFOMODE_TOOLTIP[ResourceLocatorLivestock]";
+        public const string InfomodeTooltipFish                                = "Infoviews.INFOMODE_TOOLTIP[ResourceLocatorFish]";
         public const string InfomodeTooltipVegetables                          = "Infoviews.INFOMODE_TOOLTIP[ResourceLocatorVegetables]";
         public const string InfomodeTooltipCotton                              = "Infoviews.INFOMODE_TOOLTIP[ResourceLocatorCotton]";
         public const string InfomodeTooltipOil                                 = "Infoviews.INFOMODE_TOOLTIP[ResourceLocatorOil]";

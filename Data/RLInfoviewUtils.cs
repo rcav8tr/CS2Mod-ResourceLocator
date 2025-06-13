@@ -106,6 +106,7 @@ namespace ResourceLocator
                 case RLBuildingType.Wood:               infomodePrefab.m_Color = GetColor(136,  77,  31); break;    // Dark part of the wood.
                 case RLBuildingType.Grain:              infomodePrefab.m_Color = GetColor(244, 195, 110); break;    // Light part of the grain.
                 case RLBuildingType.Livestock:          infomodePrefab.m_Color = GetColor(194,  54,   2); break;    // Top of the chicken head.
+                case RLBuildingType.Fish:               infomodePrefab.m_Color = GetColor(107, 136, 157); break;    // Eye of fish.
                 case RLBuildingType.Vegetables:         infomodePrefab.m_Color = GetColor(252, 158,  51); break;    // Center of carrot.
                 case RLBuildingType.Cotton:             infomodePrefab.m_Color = GetColor(227, 235, 242); break;    // Top cotton ball.
                 case RLBuildingType.Oil:                infomodePrefab.m_Color = GetColor(132, 120, 109); break;    // Middle of 3 colors.
