@@ -26,8 +26,8 @@
 }
 
 .resourceLocatorDisplayOptionCheckBoxLabel {
-    // Set top padding so that text is centered vertically based on font size.
-    padding-top:                    calc(2rem - (5rem * (var(--fontScale) - 1)));
+    // Set top margin so that text is centered vertically based on font size.
+    margin-top:                     calc(2rem - 12rem * (var(--fontScale) - 1));
     margin-left:                    2rem;
     font-size:                      var(--fontSizeXS);
     color:                          var(--textColorDim);

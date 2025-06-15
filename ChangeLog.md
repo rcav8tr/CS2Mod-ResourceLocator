@@ -1,1 +1,1 @@
-﻿- Include Fish.
+﻿- Better handling of text scaling changes.
