@@ -1,13 +1,14 @@
-﻿import { infoviewTypes              } from "cs2/bindings";
-import { ModuleRegistryExtend       } from "cs2/modding";
+﻿import { infoviewTypes          } from "cs2/bindings";
+import { ModuleRegistryExtend   } from "cs2/modding";
 
-import { DisplayOptionCheckBoxes    } from "displayOptionCheckBoxes";
-import { DistrictSelector           } from "districtSelector";
-import { Heading                    } from "heading";
-import { InfomodeItem               } from "infomodeItem";
-import   mod                          from "../mod.json";
-import { SelectDeselect             } from "selectDeselect";
-import { RLBuildingType             } from "uiConstants";
+import { ColorOptions           } from "colorOptions";
+import { DisplayOptions         } from "displayOptions";
+import { DistrictSelector       } from "districtSelector";
+import { Heading                } from "heading";
+import { InfomodeItem           } from "infomodeItem";
+import   mod                      from "../mod.json";
+import { SelectDeselect         } from "selectDeselect";
+import { RLBuildingType         } from "uiConstants";
 
 // InfomodeItem extension.
 export const InfomodeItemExtend: ModuleRegistryExtend = (Component: any) =>
@@ -28,10 +29,11 @@ export const InfomodeItemExtend: ModuleRegistryExtend = (Component: any) =>
             const buildingType = RLBuildingType[buildingTypeNameSuffix as keyof typeof RLBuildingType];
 
             // Check for special cases.
-            if (buildingType === RLBuildingType.District      ) { return (<DistrictSelector        />); }
-            if (buildingType === RLBuildingType.DisplayOption ) { return (<DisplayOptionCheckBoxes />); }
-            if (buildingType === RLBuildingType.SelectDeselect) { return (<SelectDeselect          />); }
-            if (buildingType === RLBuildingType.MaxValues     ) { return (<></>                      ); }
+            if (buildingType === RLBuildingType.District      ) { return (<DistrictSelector />); }
+            if (buildingType === RLBuildingType.DisplayOption ) { return (<DisplayOptions   />); }
+            if (buildingType === RLBuildingType.ColorOption   ) { return (<ColorOptions     />); }
+            if (buildingType === RLBuildingType.SelectDeselect) { return (<SelectDeselect   />); }
+            if (buildingType === RLBuildingType.MaxValues     ) { return (<></>               ); }
 
             // Check for special case for headings.
             if (buildingType === RLBuildingType.HeadingMaterials      ||

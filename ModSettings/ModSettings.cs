@@ -1,6 +1,7 @@
 ﻿using Colossal.IO.AssetDatabase;
 using Game.Modding;
 using Game.Settings;
+using UnityEngine;
 
 namespace ResourceLocator
 {
@@ -36,6 +37,14 @@ namespace ResourceLocator
             IncludeMedicalFacility   = false;
             IncludeEmeregencyShelter = false;
             IncludeCargoStation      = false;
+
+            DisplayOption = ResourceLocatorUISystem.DefaultDisplayOption;
+
+            ColorOption = ResourceLocatorUISystem.DefaultColorOption;
+
+            OneColorR = ResourceLocatorUISystem.DefaultOneColor.r;
+            OneColorG = ResourceLocatorUISystem.DefaultOneColor.g;
+            OneColorB = ResourceLocatorUISystem.DefaultOneColor.b;
         }
 
         // General description for special case buildings.
@@ -54,5 +63,18 @@ namespace ResourceLocator
         // Display mod version in settings.
         [SettingsUISection(GroupAbout)]
         public string ModVersion { get { return ModAssemblyInfo.Version; } }
+
+
+        // Hidden setting for display option.
+        [SettingsUIHidden] public DisplayOption DisplayOption { get; set; }
+
+        // Hidden setting for color option.
+        [SettingsUIHidden] public ColorOption ColorOption { get; set; }
+
+        // Hidden settings for the one color.
+        [SettingsUIHidden] public float OneColorR { get; set; }
+        [SettingsUIHidden] public float OneColorG { get; set; }
+        [SettingsUIHidden] public float OneColorB { get; set; }
+        public Color OneColor => new Color(OneColorR, OneColorG, OneColorB, 1f);
     }
 }

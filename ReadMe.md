@@ -25,8 +25,14 @@ If your city has no districts:
 - The Requires, Produces, Sells, and Stores options show buildings that require, produce, sell, or store a selected resource.
 - These options match the game's building information when you click on a building.
 - The color of each building indicates that the corresponding selected resource is being used by that building according to the selected Display Option.
-- Most resource colors match the resource icon.
 - Only one Display Option can be selected at a time.
+
+### Color Option
+- Use multiple colors or one color for the resources.
+- Use **Multiple** when you have many or all resources selected and you want to differentiate between them.
+  Most resource colors match the resource icon.
+- Use **One** when you have one or a few resources selected and you want to more easily identify their locations.
+  You can choose the one color to use.
 
 ### Resource Selection
 - You can select all or deselect all resources.

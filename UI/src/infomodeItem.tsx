@@ -1,16 +1,16 @@
-﻿import { CSSProperties                  } from "react";
+﻿import { CSSProperties                              } from "react";
 
-import { bindValue, useValue, trigger   } from "cs2/api";
-import { infoviewTypes                  } from "cs2/bindings";
-import { UnitSettings, useLocalization  } from "cs2/l10n";
-import { FormattedParagraphsProps       } from "cs2/ui";
+import { bindValue, useValue, trigger               } from "cs2/api";
+import { infoviewTypes                              } from "cs2/bindings";
+import { UnitSettings, useLocalization              } from "cs2/l10n";
+import { FormattedParagraphsProps                   } from "cs2/ui";
 
-import   styles                           from "infomodeItem.module.scss";
-import   mod                              from "../mod.json";
-import { ModuleResolver                 } from "moduleResolver";
-import { uiBindingNames                 } from "uiBindings";
-import { DisplayOption, RLBuildingType  } from "uiConstants";
-import { UITranslationKey               } from "uiTranslationKey";
+import   styles                                       from "infomodeItem.module.scss";
+import   mod                                          from "../mod.json";
+import { ModuleResolver                             } from "moduleResolver";
+import { uiBindingNames                             } from "uiBindings";
+import { DisplayOption, ColorOption, RLBuildingType } from "uiConstants";
+import { UITranslationKey                           } from "uiTranslationKey";
 
 // Define unit systems.
 // For unknown reasons, using the UnitSystem enum directly from l10n causes a run-time error.
@@ -36,7 +36,8 @@ type ResourceInfo =
 }
 
 // Define bindings.
-const bindingDisplayOption = bindValue<number        >(mod.id, uiBindingNames.DisplayOption, DisplayOption.Requires);
+const bindingDisplayOption = bindValue<DisplayOption >(mod.id, uiBindingNames.DisplayOption, DisplayOption.Requires);
+const bindingColorOption   = bindValue<ColorOption   >(mod.id, uiBindingNames.ColorOption, ColorOption.Multiple);
 const bindingResourceInfos = bindValue<ResourceInfo[]>(mod.id, uiBindingNames.ResourceInfos);
 const bindingUnitSettings  = bindValue<UnitSettings  >("options", "unitSettings");
 
@@ -72,8 +73,9 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     const formattedParagraphsProps: FormattedParagraphsProps = { children: translationInfomodeTooltip };
     const formattedInfomodeTooltip: JSX.Element = ModuleResolver.instance.FormattedParagraphs(formattedParagraphsProps);
 
-    // Get display option.
-    const displayOption = useValue(bindingDisplayOption);
+    // Get display option and color option
+    const displayOption: DisplayOption = useValue(bindingDisplayOption);
+    const colorOption:   ColorOption   = useValue(bindingColorOption);
 
     // Define variables for storage and rate values for this resource.
     let valueStorageRequires:   number = 0;
@@ -371,9 +373,14 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
                     <div className={ModuleResolver.instance.InfomodeItemClasses.header}>
                         <div className={ModuleResolver.instance.InfomodeItemClasses.title}>
                             <img className={styles.resourceLocatorInfomodeIcon} src={icon} />
-                            <div className={joinClasses(ModuleResolver.instance.ColorLegendClasses.symbol,
-                                                        ModuleResolver.instance.InfomodeItemClasses.color,
-                                                        styles.resourceLocatorInfomodeColorSymbol)} style={styleSymbol}></div>
+                            {
+                                colorOption === ColorOption.Multiple &&
+                                (
+                                    <div className={joinClasses(ModuleResolver.instance.ColorLegendClasses.symbol,
+                                                                ModuleResolver.instance.InfomodeItemClasses.color,
+                                                                styles.resourceLocatorInfomodeColorSymbol)} style={styleSymbol}></div>
+                                )
+                            }
                             {
                                 displayOption === DisplayOption.Produces &&
                                 (

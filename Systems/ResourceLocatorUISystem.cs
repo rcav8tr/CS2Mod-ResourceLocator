@@ -12,6 +12,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEngine;
 using UnityEngine.Scripting;
 
 namespace ResourceLocator
@@ -23,6 +24,13 @@ namespace ResourceLocator
         Produces,
         Sells,
         Stores,
+    }
+
+    // Define color options.
+    public enum ColorOption
+    {
+        Multiple,
+        One
     }
 
     /// <summary>
@@ -48,17 +56,23 @@ namespace ResourceLocator
         public const string BindingNameSelectedDistrict = "SelectedDistrict";
         public const string BindingNameDistrictInfos    = "DistrictInfos";
         public const string BindingNameDisplayOption    = "DisplayOption";
+        public const string BindingNameColorOption      = "ColorOption";
+        public const string BindingNameOneColor         = "OneColor";
         public const string BindingNameResourceInfos    = "ResourceInfos";
 
         // C# to UI bindings.
         private ValueBinding<Entity>    _bindingSelectedDistrict;
         private RawValueBinding         _bindingDistrictInfos;
         private ValueBinding<int>       _bindingDisplayOption;
+        private ValueBinding<int>       _bindingColorOption;
+        private ValueBinding<Color>     _bindingOneColor;
         private RawValueBinding         _bindingResourceInfos;
 
         // UI to C# event names.
         public const string EventNameSelectedDistrictChanged    = "SelectedDistrictChanged";
         public const string EventNameDisplayOptionClicked       = "DisplayOptionClicked";
+        public const string EventNameColorOptionClicked         = "ColorOptionClicked";
+        public const string EventNameOneColorChanged            = "OneColorChanged";
 
         // Districts.
         private EntityQuery _districtQuery;
@@ -67,7 +81,14 @@ namespace ResourceLocator
         public Entity selectedDistrict { get; set; } = EntireCity;
 
         // Display option.
-        public DisplayOption displayOption { get; set; } = DisplayOption.Requires;
+        public const DisplayOption DefaultDisplayOption = DisplayOption.Requires;
+        public DisplayOption displayOption { get; set; } = DefaultDisplayOption;
+
+        // Color options.
+        public const ColorOption DefaultColorOption = ColorOption.Multiple;
+        public ColorOption colorOption { get; set; } = DefaultColorOption;
+        public static readonly Color DefaultOneColor = new Color(1f, 0f, 0f, 1f);
+        public Color oneColor { get; set; } = DefaultOneColor;
 
         /// <summary>
         /// Do one-time initialization of the system.
@@ -90,14 +111,18 @@ namespace ResourceLocator
                 _buildingColorSystem    = base.World.GetOrCreateSystemManaged<BuildingColorSystem>();
 
                 // Add bindings for C# to UI.
-                AddBinding(_bindingSelectedDistrict = new ValueBinding<Entity>(ModAssemblyInfo.Name, BindingNameSelectedDistrict, EntireCity                 ));
-                AddBinding(_bindingDistrictInfos    = new RawValueBinding     (ModAssemblyInfo.Name, BindingNameDistrictInfos,    WriteDistrictInfos         ));
-                AddBinding(_bindingDisplayOption    = new ValueBinding<int>   (ModAssemblyInfo.Name, BindingNameDisplayOption,    (int)DisplayOption.Requires));
-                AddBinding(_bindingResourceInfos    = new RawValueBinding     (ModAssemblyInfo.Name, BindingNameResourceInfos,    WriteResourceInfos         ));
+                AddBinding(_bindingSelectedDistrict = new ValueBinding<Entity>(ModAssemblyInfo.Name, BindingNameSelectedDistrict, EntireCity                        ));
+                AddBinding(_bindingDistrictInfos    = new RawValueBinding     (ModAssemblyInfo.Name, BindingNameDistrictInfos,    WriteDistrictInfos                ));
+                AddBinding(_bindingDisplayOption    = new ValueBinding<int>   (ModAssemblyInfo.Name, BindingNameDisplayOption,    (int)Mod.ModSettings.DisplayOption));
+                AddBinding(_bindingColorOption      = new ValueBinding<int>   (ModAssemblyInfo.Name, BindingNameColorOption,      (int)Mod.ModSettings.ColorOption  ));
+                AddBinding(_bindingOneColor         = new ValueBinding<Color> (ModAssemblyInfo.Name, BindingNameOneColor,         Mod.ModSettings.OneColor          ));
+                AddBinding(_bindingResourceInfos    = new RawValueBinding     (ModAssemblyInfo.Name, BindingNameResourceInfos,    WriteResourceInfos                ));
 
                 // Add bindings for UI to C#.
                 AddBinding(new TriggerBinding<Entity>(ModAssemblyInfo.Name, EventNameSelectedDistrictChanged,   SelectedDistrictChanged));
                 AddBinding(new TriggerBinding<int   >(ModAssemblyInfo.Name, EventNameDisplayOptionClicked,      DisplayOptionClicked   ));
+                AddBinding(new TriggerBinding<int   >(ModAssemblyInfo.Name, EventNameColorOptionClicked,        ColorOptionClicked     ));
+                AddBinding(new TriggerBinding<Color >(ModAssemblyInfo.Name, EventNameOneColorChanged,           OneColorChanged     ));
 
                 // Define entity query to get districts.
                 _districtQuery = GetEntityQuery(ComponentType.ReadOnly<District>());
@@ -312,9 +337,46 @@ namespace ResourceLocator
         {
             // Save the new display option.
             displayOption = (DisplayOption)newDisplayOption;
+            Mod.ModSettings.DisplayOption = displayOption;
 
             // Immediately send the display option back to the UI.
             _bindingDisplayOption.Update((int)displayOption);
+        }
+
+        /// <summary>
+        /// Event callback for color option clicked.
+        /// </summary>
+        private void ColorOptionClicked(int newColorOption)
+        {
+            // Save the new color option.
+            colorOption = (ColorOption)newColorOption;
+            Mod.ModSettings.ColorOption = colorOption;
+
+            // Immediately send the color option back to the UI.
+            _bindingColorOption.Update((int)colorOption);
+
+            // Use the newly selected color option.
+            RLInfoviewUtils.SetInfomodeColors();
+            RLInfoviewUtils.RefreshInfoview();
+        }
+
+        /// <summary>
+        /// Event callback for one color changed.
+        /// </summary>
+        private void OneColorChanged(Color newOneColor)
+        {
+            // Save the new one color.
+            oneColor = newOneColor;
+            Mod.ModSettings.OneColorR = oneColor.r;
+            Mod.ModSettings.OneColorG = oneColor.g;
+            Mod.ModSettings.OneColorB = oneColor.b;
+
+            // Immediately send the one color back to the UI.
+            _bindingOneColor.Update(oneColor);
+
+            // Use the newly selected one color.
+            RLInfoviewUtils.SetInfomodeColors();
+            RLInfoviewUtils.RefreshInfoview();
         }
 
         /// <summary>

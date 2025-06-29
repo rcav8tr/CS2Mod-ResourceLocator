@@ -101,6 +101,12 @@ namespace ResourceLocator
         public const string DisplayOptionStores                                = "ResourceLocator.DisplayOptionStores";
         public const string DisplayOptionTooltip                               = "ResourceLocator.DisplayOptionTooltip";
 
+        // Color option text.
+        public const string ColorOptionColor                                   = "ResourceLocator.ColorOptionColor";
+        public const string ColorOptionMultiple                                = "ResourceLocator.ColorOptionMultiple";
+        public const string ColorOptionOne                                     = "ResourceLocator.ColorOptionOne";
+        public const string ColorOptionTooltip                                 = "ResourceLocator.ColorOptionTooltip";
+
         // Select/deselect text.
         public const string SelectAll                                          = "ResourceLocator.SelectAll";
         public const string DeselectAll                                        = "ResourceLocator.DeselectAll";

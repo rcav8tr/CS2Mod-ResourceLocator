@@ -70,6 +70,17 @@ namespace ResourceLocator
             }
             sb.AppendLine("}");
 
+            // Include color options.
+            sb.AppendLine();
+            sb.AppendLine("// Define color options.");
+            sb.AppendLine("export enum " + nameof(ColorOption));
+            sb.AppendLine("{");
+            foreach (ColorOption colorOption in Enum.GetValues(typeof(ColorOption)))
+            {
+                sb.AppendLine($"    {colorOption.ToString().PadRight(32)} = {(int)colorOption},");
+            }
+            sb.AppendLine("}");
+
             // Write the file to the UI/src folder.
             string uiConstantsPath = Path.Combine(GetSourceCodePath(), "UI", "src", "uiConstants.tsx");
             File.WriteAllText(uiConstantsPath, sb.ToString());
@@ -91,6 +102,8 @@ namespace ResourceLocator
             sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameSelectedDistrict      .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameSelectedDistrict}\";");
             sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameDistrictInfos         .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameDistrictInfos   }\";");
             sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameDisplayOption         .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameDisplayOption   }\";");
+            sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameColorOption           .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameColorOption     }\";");
+            sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameOneColor              .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameOneColor        }\";");
             sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameResourceInfos         .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameResourceInfos   }\";");
             sb.AppendLine("}");
 
@@ -101,6 +114,8 @@ namespace ResourceLocator
             sb.AppendLine("{");
             sb.AppendLine($"    public static {ResourceLocatorUISystem.EventNameSelectedDistrictChanged .PadRight(36)} : string = \"{ResourceLocatorUISystem.EventNameSelectedDistrictChanged}\";");
             sb.AppendLine($"    public static {ResourceLocatorUISystem.EventNameDisplayOptionClicked    .PadRight(36)} : string = \"{ResourceLocatorUISystem.EventNameDisplayOptionClicked   }\";");
+            sb.AppendLine($"    public static {ResourceLocatorUISystem.EventNameColorOptionClicked      .PadRight(36)} : string = \"{ResourceLocatorUISystem.EventNameColorOptionClicked     }\";");
+            sb.AppendLine($"    public static {ResourceLocatorUISystem.EventNameOneColorChanged         .PadRight(36)} : string = \"{ResourceLocatorUISystem.EventNameOneColorChanged        }\";");
             sb.AppendLine("}");
 
             // Write the file to the UI/src folder.
@@ -186,6 +201,17 @@ namespace ResourceLocator
             displayOptionText.Add(nameof(DisplayOption) + "Tooltip");
             sb.AppendLine();
             sb.Append(GetTranslationsContent(csFile, "Display option text.", displayOptionText));
+
+            // Include color option text.
+            TranslationKeys colorOptionText = new TranslationKeys();
+            colorOptionText.Add(nameof(ColorOption) + "Color");
+            foreach (ColorOption colorOption in Enum.GetValues(typeof(ColorOption)))
+            {
+                colorOptionText.Add(nameof(ColorOption) + colorOption.ToString());
+            }
+            colorOptionText.Add(nameof(ColorOption) + "Tooltip");
+            sb.AppendLine();
+            sb.Append(GetTranslationsContent(csFile, "Color option text.", colorOptionText));
 
             // Include select/deselect text.
             TranslationKeys selectDeselectText = new TranslationKeys() { "SelectAll", "DeselectAll", "SelectDeselectTooltip", };

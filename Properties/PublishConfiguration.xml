@@ -41,8 +41,14 @@ If your city has no districts:
 - The Requires, Produces, Sells, and Stores options show buildings that require, produce, sell, or store a selected resource.
 - These options match the game's building information when you click on a building.
 - The color of each building indicates that the corresponding selected resource is being used by that building according to the selected Display Option.
-- Most resource colors match the resource icon.
 - Only one Display Option can be selected at a time.
+
+### Color Option
+- Use multiple colors or one color for the resources.
+- Use **Multiple** when you have many or all resources selected and you want to differentiate between them.
+  Most resource colors match the resource icon.
+- Use **One** when you have one or a few resources selected and you want to more easily identify their locations.
+  You can choose the one color to use.
 
 ### Resource Selection
 - You can select all or deselect all resources.
@@ -139,6 +145,7 @@ The following mods were used extensively in the development of this mod:
     <Screenshot Value="Properties\Screenshots\10Thumbnail.png" />
     <Screenshot Value="Properties\Screenshots\20InfoviewButton.png" />
     <Screenshot Value="Properties\Screenshots\30Requires.png" />
+    <Screenshot Value="Properties\Screenshots\35RequiresOneColor.png" />
     <Screenshot Value="Properties\Screenshots\40Produces.png" />
     <Screenshot Value="Properties\Screenshots\50Sells.png" />
     <Screenshot Value="Properties\Screenshots\60Stores.png" />
@@ -152,10 +159,10 @@ The following mods were used extensively in the development of this mod:
     <ForumLink Value="https://forum.paradoxplaza.com/forum/threads/resource-locator.1725428/" />
 
     <!-- Version of the mod.  Copied from assembly Version. -->
-    <ModVersion Value="1.4.1" />
+    <ModVersion Value="1.5.0" />
 
     <!-- Recommended version of the base game to use the mod. -->
-    <GameVersion Value="1.*" />
+    <GameVersion Value="1.3.*" />
 
     <!-- Dependency for the mod.  Can be set multiple times. -->
     <Dependency Id="" />
@@ -166,7 +173,8 @@ The following mods were used extensively in the development of this mod:
 
     <!-- Change log.  Copied from ChangeLog.md file.  Supports minimal markdown subset. -->
     <ChangeLog>
-- Better handling of text scaling changes.
+- Add ability to display all buildings with one color that you choose.
+- Save and restore Display Option between games.
 </ChangeLog>
 
     <!-- External links.  Can be set multiple times. -->

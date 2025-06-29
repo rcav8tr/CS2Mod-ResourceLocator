@@ -14,6 +14,7 @@ namespace ResourceLocator
 
         District,
         DisplayOption,
+        ColorOption,
         SelectDeselect,
 
         HeadingMaterials,
@@ -119,6 +120,7 @@ namespace ResourceLocator
                 buildingType == RLBuildingType.None                     ||
                 buildingType == RLBuildingType.District                 ||
                 buildingType == RLBuildingType.DisplayOption            ||
+                buildingType == RLBuildingType.ColorOption              ||
                 buildingType == RLBuildingType.SelectDeselect           ||
                 buildingType == RLBuildingType.HeadingMaterials         ||
                 buildingType == RLBuildingType.HeadingMaterialGoods     ||

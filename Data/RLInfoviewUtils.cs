@@ -1,4 +1,5 @@
 ﻿using Game.Prefabs;
+using Game.Tools;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +15,12 @@ namespace ResourceLocator
     {
         // The name of the one infoview is the mod assembly name.
 
+        // The infoview prefab.
+        private static InfoviewPrefab _infoviewPrefab;
+
+        // Other systems
+        private static ToolSystem _toolSystem;
+
         /// <summary>
         /// Initialize the infoview.
         /// </summary>
@@ -23,9 +30,12 @@ namespace ResourceLocator
             
             try
             {
+                // Get other systems.
+                World defaultWorld = World.DefaultGameObjectInjectionWorld;
+                _toolSystem = defaultWorld.GetOrCreateSystemManaged<ToolSystem>();
+
                 // The game's infoviews must be created before this mod's infoview.
                 // That will be the normal case, but perform the check anyway just in case.
-                World defaultWorld = World.DefaultGameObjectInjectionWorld;
                 InfoviewInitializeSystem infoviewInitializeSystem = defaultWorld.GetOrCreateSystemManaged<InfoviewInitializeSystem>();
                 if (infoviewInitializeSystem == null || infoviewInitializeSystem.infoviews.Count() == 0)
                 {
@@ -52,15 +62,15 @@ namespace ResourceLocator
                 }
 
                 // Create the infoview prefab.
-                InfoviewPrefab infoviewPrefab = ScriptableObject.CreateInstance<InfoviewPrefab>();
+                _infoviewPrefab = ScriptableObject.CreateInstance<InfoviewPrefab>();
 
                 // Set infoview prefab properties.
                 // The name of this mod's one infoview is the mod assembly name.
-                infoviewPrefab.name = ModAssemblyInfo.Name;
-                infoviewPrefab.m_Group = infoviewGroupNumber;
-                infoviewPrefab.m_Priority = 1;
-                infoviewPrefab.m_Editor = false;
-                infoviewPrefab.m_IconPath = $"coui://{Mod.ImagesURI}/Infoview{ModAssemblyInfo.Name}.svg";
+                _infoviewPrefab.name = ModAssemblyInfo.Name;
+                _infoviewPrefab.m_Group = infoviewGroupNumber;
+                _infoviewPrefab.m_Priority = 1;
+                _infoviewPrefab.m_Editor = false;
+                _infoviewPrefab.m_IconPath = $"coui://{Mod.ImagesURI}/Infoview{ModAssemblyInfo.Name}.svg";
 
                 // Set infoview prefab's infomodes, one infomode for each building type except None.
                 // Priority determines infomode sort order.
@@ -73,11 +83,14 @@ namespace ResourceLocator
                         infomodeInfos.Add(CreateInfomodeInfo(buildingType, infomodePriority++));
                     }
                 }
-                infoviewPrefab.m_Infomodes = infomodeInfos.ToArray();
+                _infoviewPrefab.m_Infomodes = infomodeInfos.ToArray();
+
+                // Initialize infomode colors.
+                SetInfomodeColors();
 
                 // Add the infoview prefab to the prefab system.
                 PrefabSystem prefabSystem = World.DefaultGameObjectInjectionWorld.GetOrCreateSystemManaged<PrefabSystem>();
-                prefabSystem.AddPrefab(infoviewPrefab);
+                prefabSystem.AddPrefab(_infoviewPrefab);
             }
             catch (Exception ex)
             {
@@ -99,54 +112,79 @@ namespace ResourceLocator
             infomodePrefab.m_Type = (Game.Prefabs.BuildingType)buildingType;
             infomodePrefab.name = RLBuildingTypeUtils.GetBuildingTypeName(buildingType);
 
-            // Set infomode color based on building type.
-            // Except where noted, each color was taken manually from the corresponding resource icon.
-            switch (buildingType)
-            {
-                case RLBuildingType.Wood:               infomodePrefab.m_Color = GetColor(136,  77,  31); break;    // Dark part of the wood.
-                case RLBuildingType.Grain:              infomodePrefab.m_Color = GetColor(244, 195, 110); break;    // Light part of the grain.
-                case RLBuildingType.Livestock:          infomodePrefab.m_Color = GetColor(194,  54,   2); break;    // Top of the chicken head.
-                case RLBuildingType.Fish:               infomodePrefab.m_Color = GetColor(107, 136, 157); break;    // Eye of fish.
-                case RLBuildingType.Vegetables:         infomodePrefab.m_Color = GetColor(252, 158,  51); break;    // Center of carrot.
-                case RLBuildingType.Cotton:             infomodePrefab.m_Color = GetColor(227, 235, 242); break;    // Top cotton ball.
-                case RLBuildingType.Oil:                infomodePrefab.m_Color = GetColor(132, 120, 109); break;    // Middle of 3 colors.
-                case RLBuildingType.Ore:                infomodePrefab.m_Color = GetColor( 82, 240, 218); break;    // Blue from ore.
-                case RLBuildingType.Coal:               infomodePrefab.m_Color = GetColor( 76,  79,  85); break;    // Middle of 3 colors.
-                case RLBuildingType.Stone:              infomodePrefab.m_Color = GetColor(139, 131, 131); break;    // Darker of 2 colors.
-                
-                case RLBuildingType.Metals:             infomodePrefab.m_Color = GetColor(138, 141, 143); break;    // Lighter of 2 colors.
-                case RLBuildingType.Steel:              infomodePrefab.m_Color = GetColor(182, 213, 236); break;    // Lighter of 2 colors.
-                case RLBuildingType.Minerals:           infomodePrefab.m_Color = GetColor( 10, 176, 153); break;    // Darkest of colors.
-                case RLBuildingType.Concrete:           infomodePrefab.m_Color = GetColor(117,   0, 143); break;    // Ignore icon, use purple.
-                case RLBuildingType.Machinery:          infomodePrefab.m_Color = GetColor(150, 172, 183); break;    // Darker of 2 gears.
-                case RLBuildingType.Petrochemicals:     infomodePrefab.m_Color = GetColor(255, 221, 186); break;    // Lightest of 3 colors.
-                case RLBuildingType.Chemicals:          infomodePrefab.m_Color = GetColor(147, 226,  44); break;    // Green from flask.
-                case RLBuildingType.Plastics:           infomodePrefab.m_Color = GetColor(117, 164, 255); break;    // Main bottle color.
-                case RLBuildingType.Pharmaceuticals:    infomodePrefab.m_Color = GetColor(233, 129, 129); break;    // Light color from red pill.
-                case RLBuildingType.Electronics:        infomodePrefab.m_Color = GetColor(173, 195, 206); break;    // Main color.
-                case RLBuildingType.Vehicles:           infomodePrefab.m_Color = GetColor(241, 105,  35); break;    // Car body.
-                case RLBuildingType.Beverages:          infomodePrefab.m_Color = GetColor(243, 141,  52); break;    // Darkest color from bottle.
-                case RLBuildingType.ConvenienceFood:    infomodePrefab.m_Color = GetColor(207, 194, 160); break;    // Front food item.
-                case RLBuildingType.Food:               infomodePrefab.m_Color = GetColor(250, 220, 162); break;    // Basket.
-                case RLBuildingType.Textiles:           infomodePrefab.m_Color = GetColor(240, 236, 236); break;    // Only one color.
-                case RLBuildingType.Timber:             infomodePrefab.m_Color = GetColor(198, 133, 100); break;    // Middle of 3 colors.
-                case RLBuildingType.Paper:              infomodePrefab.m_Color = GetColor(220,   0, 180); break;    // Ignore icon, use pink.
-                case RLBuildingType.Furniture:          infomodePrefab.m_Color = GetColor(175, 110,  46); break;    // Chair right side.
-                
-                case RLBuildingType.Software:           infomodePrefab.m_Color = GetColor(193, 255, 104); break;    // The only green.
-                case RLBuildingType.Telecom:            infomodePrefab.m_Color = GetColor(230, 221, 199); break;    // Back conversation bubble.
-                case RLBuildingType.Financial:          infomodePrefab.m_Color = GetColor(114, 171,  95); break;    // Right side of money stack.
-                case RLBuildingType.Media:              infomodePrefab.m_Color = GetColor(135, 151, 156); break;    // Lighter of 2 colors.
-                case RLBuildingType.Lodging:            infomodePrefab.m_Color = GetColor(106, 154, 174); break;    // Blanket on bed.
-                case RLBuildingType.Meals:              infomodePrefab.m_Color = GetColor(180,   0, 220); break;    // Ignore icon, use purple.
-                case RLBuildingType.Entertainment:      infomodePrefab.m_Color = GetColor(208, 234, 163); break;    // Left face.
-                case RLBuildingType.Recreation:         infomodePrefab.m_Color = GetColor(198, 133, 101); break;    // Left mountain.
-                
-                default:                                infomodePrefab.m_Color = Color.red;               break;
-            }
-
             // Return a new infomode based on the infomode prefab.
             return new InfomodeInfo() { m_Mode = infomodePrefab, m_Priority = priority };
+        }
+
+        /// <summary>
+        /// Set color for all infomodes.
+        /// </summary>
+        public static void SetInfomodeColors()
+        {
+            // Do each infomode in the infoview prefab.
+            foreach (InfomodeInfo infomodeInfo in _infoviewPrefab.m_Infomodes)
+            {
+                // Get infomode prefab to be updated.
+                // All infomodes in this mod are of type BuildingInfomodePrefab.
+                BuildingInfomodePrefab infomodePrefab = (BuildingInfomodePrefab)infomodeInfo.m_Mode;
+
+                // Get color based on color option.
+                Color color = Color.red;
+                if (Mod.ModSettings.ColorOption == ColorOption.Multiple)
+                {
+                    // Get infomode color based on building type.
+                    // Except where noted, each color was taken manually from the corresponding resource icon.
+                    switch ((RLBuildingType)infomodePrefab.m_Type)
+                    {
+                        case RLBuildingType.Wood:               color = GetColor(136,  77,  31); break;     // Dark part of the wood.
+                        case RLBuildingType.Grain:              color = GetColor(244, 195, 110); break;     // Light part of the grain.
+                        case RLBuildingType.Livestock:          color = GetColor(194,  54,   2); break;     // Top of the chicken head.
+                        case RLBuildingType.Fish:               color = GetColor(107, 136, 157); break;     // Eye of fish.
+                        case RLBuildingType.Vegetables:         color = GetColor(252, 158,  51); break;     // Center of carrot.
+                        case RLBuildingType.Cotton:             color = GetColor(227, 235, 242); break;     // Top cotton ball.
+                        case RLBuildingType.Oil:                color = GetColor(132, 120, 109); break;     // Middle of 3 colors.
+                        case RLBuildingType.Ore:                color = GetColor( 82, 240, 218); break;     // Blue from ore.
+                        case RLBuildingType.Coal:               color = GetColor( 76,  79,  85); break;     // Middle of 3 colors.
+                        case RLBuildingType.Stone:              color = GetColor(139, 131, 131); break;     // Darker of 2 colors.
+                
+                        case RLBuildingType.Metals:             color = GetColor(138, 141, 143); break;     // Lighter of 2 colors.
+                        case RLBuildingType.Steel:              color = GetColor(182, 213, 236); break;     // Lighter of 2 colors.
+                        case RLBuildingType.Minerals:           color = GetColor( 10, 176, 153); break;     // Darkest of colors.
+                        case RLBuildingType.Concrete:           color = GetColor(117,   0, 143); break;     // Ignore icon, use purple.
+                        case RLBuildingType.Machinery:          color = GetColor(150, 172, 183); break;     // Darker of 2 gears.
+                        case RLBuildingType.Petrochemicals:     color = GetColor(255, 221, 186); break;     // Lightest of 3 colors.
+                        case RLBuildingType.Chemicals:          color = GetColor(147, 226,  44); break;     // Green from flask.
+                        case RLBuildingType.Plastics:           color = GetColor(117, 164, 255); break;     // Main bottle color.
+                        case RLBuildingType.Pharmaceuticals:    color = GetColor(233, 129, 129); break;     // Light color from red pill.
+                        case RLBuildingType.Electronics:        color = GetColor( 59,  65,  70); break;     // 50% of center color.
+                        case RLBuildingType.Vehicles:           color = GetColor(241, 105,  35); break;     // Car body.
+                        case RLBuildingType.Beverages:          color = GetColor(243, 141,  52); break;     // Darkest color from bottle.
+                        case RLBuildingType.ConvenienceFood:    color = GetColor(207, 194, 160); break;     // Front food item.
+                        case RLBuildingType.Food:               color = GetColor(250, 220, 162); break;     // Basket.
+                        case RLBuildingType.Textiles:           color = GetColor(240, 236, 236); break;     // Only one color.
+                        case RLBuildingType.Timber:             color = GetColor(198, 133, 100); break;     // Middle of 3 colors.
+                        case RLBuildingType.Paper:              color = GetColor(220,   0, 180); break;     // Ignore icon, use pink.
+                        case RLBuildingType.Furniture:          color = GetColor(175, 110,  46); break;     // Chair right side.
+                
+                        case RLBuildingType.Software:           color = GetColor(193, 255, 104); break;     // The only green.
+                        case RLBuildingType.Telecom:            color = GetColor(230, 221, 199); break;     // Back conversation bubble.
+                        case RLBuildingType.Financial:          color = GetColor(114, 171,  95); break;     // Right side of money stack.
+                        case RLBuildingType.Media:              color = GetColor(135, 151, 156); break;     // Lighter of 2 colors.
+                        case RLBuildingType.Lodging:            color = GetColor(106, 154, 174); break;     // Blanket on bed.
+                        case RLBuildingType.Meals:              color = GetColor(180,   0, 220); break;     // Ignore icon, use purple.
+                        case RLBuildingType.Entertainment:      color = GetColor(208, 234, 163); break;     // Left face.
+                        case RLBuildingType.Recreation:         color = GetColor(198, 133, 101); break;     // Left mountain.
+                    }
+                }
+                else
+                {
+                    // Use one color from settings for all infomodes.
+                    color = Mod.ModSettings.OneColor;
+                }
+
+                // Set the infomode color.
+                infomodePrefab.m_Color = color;
+            }
         }
 
         /// <summary>
@@ -155,6 +193,38 @@ namespace ResourceLocator
         private static Color GetColor(byte r, byte g, byte b)
         {
             return new Color(Mathf.Clamp01(r / 255f), Mathf.Clamp01(g / 255f), Mathf.Clamp01(b / 255f), 1f);
+        }
+
+        /// <summary>
+        /// Refresh the infoview.
+        /// </summary>
+        public static void RefreshInfoview()
+        {
+            // Refreshing the infoview makes all infomodes active again.
+            // Save infomodes that are currently inactive.
+            List<InfomodePrefab> inactiveInfomodes = new();
+            InfomodeInfo[] infomodeInfos = _toolSystem.activeInfoview.m_Infomodes;
+            foreach (InfomodeInfo infomodeInfo in infomodeInfos)
+            {
+                if (!_toolSystem.IsInfomodeActive(infomodeInfo.m_Mode))
+                {
+                    inactiveInfomodes.Add(infomodeInfo.m_Mode);
+                }
+            }
+
+            // Clear and immediately set infoview.
+            // This causes infoview to be redisplayed.
+            _toolSystem.infoview = null;
+            _toolSystem.infoview = _infoviewPrefab;
+
+            // Deactivate infomodes that were inactive.
+            foreach (InfomodeInfo infomodeInfo in infomodeInfos)
+            {
+                if (inactiveInfomodes.Contains(infomodeInfo.m_Mode))
+                {
+                    _toolSystem.SetInfomodeActive(infomodeInfo.m_Mode, false, infomodeInfo.m_Priority);
+                }
+            }
         }
     }
 }

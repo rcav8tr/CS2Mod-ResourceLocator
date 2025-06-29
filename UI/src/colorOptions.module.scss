@@ -1,0 +1,16 @@
+﻿.resourceLocatorColorOptions {
+    display:            flex;
+    flex-direction:     row;
+    margin-top:         0rem;
+    margin-left:        10rem;
+    margin-right:       10rem;
+    margin-bottom:      2rem;
+    line-height:        calc(100% - 60% * (var(--fontScale) - 1));
+}
+
+.resourceLocationColorLabel {
+    font-size:          var(--fontSizeS);
+    color:              var(--textColorDim);
+    margin-top:         calc(6rem - 10rem * (var(--fontScale) - 1));
+    margin-right:       10rem;
+}

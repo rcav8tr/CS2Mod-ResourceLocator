@@ -1,6 +1,25 @@
-﻿import { Theme                                  } from "cs2/bindings";
-import { getModule                              } from "cs2/modding";
-import { FormattedParagraphsProps, TooltipProps } from "cs2/ui";
+﻿import { BalloonDirection, Color, FocusKey, Theme, UniqueFocusKey   } from "cs2/bindings";
+import { InputAction                                                } from "cs2/input";
+import { getModule                                                  } from "cs2/modding";
+import { FormattedParagraphsProps, TooltipProps                     } from "cs2/ui";
+
+
+type ColorFieldProps =
+{
+    focusKey?:          FocusKey;
+    disabled?:          boolean;
+    value?:             Color;
+    className?:         string;
+    selectAction?:      InputAction;
+    alpha?:             boolean;
+    popupDirection?:    BalloonDirection;
+    hideHint?:          boolean,
+    onChange?:          (e: Color) => void;
+    onClick?:           (e: any) => void;
+    onMouseEnter?:      (e: any) => void;
+    onMouseLeave?:      (e: any) => void;
+    onClosePicker?:     (e: any) => void;
+}
 
 // Provide access to modules from index.js.
 export class ModuleResolver
@@ -10,8 +29,10 @@ export class ModuleResolver
     public static get instance(): ModuleResolver { return this._instance }
 
     // Define component modules.
+    private _focusDisabled: any;
     private _tooltip: any;
     private _formattedParagraphs: any;
+    private _colorfield: any;
 
     // Define code modules.
     private _uiSound: any;
@@ -26,8 +47,10 @@ export class ModuleResolver
     private _colorLegendClasses: any;
 
     // Provide access to component modules.
-    public get Tooltip():               (props: TooltipProps)               => JSX.Element { return this._tooltip               ?? (this._tooltip               = getModule("game-ui/common/tooltip/tooltip.tsx",               "Tooltip"               )); }
-    public get FormattedParagraphs():   (props: FormattedParagraphsProps)   => JSX.Element { return this._formattedParagraphs   ?? (this._formattedParagraphs   = getModule("game-ui/common/text/formatted-paragraphs.tsx",     "FormattedParagraphs"   )); }
+    public get FOCUS_DISABLED():        UniqueFocusKey                                     { return this._focusDisabled         ?? (this._focusDisabled         = getModule("game-ui/common/focus/focus-key.ts",                                "FOCUS_DISABLED"        )); }
+    public get Tooltip():               (props: TooltipProps)               => JSX.Element { return this._tooltip               ?? (this._tooltip               = getModule("game-ui/common/tooltip/tooltip.tsx",                               "Tooltip"               )); }
+    public get FormattedParagraphs():   (props: FormattedParagraphsProps)   => JSX.Element { return this._formattedParagraphs   ?? (this._formattedParagraphs   = getModule("game-ui/common/text/formatted-paragraphs.tsx",                     "FormattedParagraphs"   )); }
+    public get ColorField():            (props: ColorFieldProps)            => JSX.Element { return this._colorfield            ?? (this._colorfield            = getModule("game-ui/common/input/color-picker/color-field/color-field.tsx",    "ColorField"            )); }
 
     // Provide access to code modules.
     public get UISound()                { return this._uiSound  ?? (this._uiSound   = getModule("game-ui/common/data-binding/audio-bindings.ts",    "UISound"   )); }

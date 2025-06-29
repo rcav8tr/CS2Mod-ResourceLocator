@@ -67,8 +67,9 @@ namespace ResourceLocator
                 //    // Exclude assets.
                 //    if (!keyValue.Key.StartsWith("Assets."))
                 //    {
-                //        //if (keyValue.Key.ToLower().Contains("thousand"))
-                //        if (keyValue.Value.StartsWith("Cargo"))
+                //        //if (keyValue.Value.ToLower().StartsWith("color"))
+                //        //if (keyValue.Value.StartsWith("Cargo"))
+                //        if (keyValue.Value == ("Distinct"))
                 //        {
                 //            log.Info(keyValue.Key + "\t" + keyValue.Value);
                 //        }

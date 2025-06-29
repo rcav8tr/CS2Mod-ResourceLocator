@@ -99,6 +99,12 @@ export class UITranslationKey
     public static DisplayOptionStores                               : string = "ResourceLocator.DisplayOptionStores";
     public static DisplayOptionTooltip                              : string = "ResourceLocator.DisplayOptionTooltip";
 
+    // Color option text.
+    public static ColorOptionColor                                  : string = "ResourceLocator.ColorOptionColor";
+    public static ColorOptionMultiple                               : string = "ResourceLocator.ColorOptionMultiple";
+    public static ColorOptionOne                                    : string = "ResourceLocator.ColorOptionOne";
+    public static ColorOptionTooltip                                : string = "ResourceLocator.ColorOptionTooltip";
+
     // Select/deselect text.
     public static SelectAll                                         : string = "ResourceLocator.SelectAll";
     public static DeselectAll                                       : string = "ResourceLocator.DeselectAll";
