@@ -110,19 +110,24 @@ namespace ResourceLocator
                 _commercialDemandSystem = base.World.GetOrCreateSystemManaged<CommercialDemandSystem>();
                 _buildingColorSystem    = base.World.GetOrCreateSystemManaged<BuildingColorSystem>();
 
+                // Initialize UI options from mod settings.
+                displayOption = Mod.ModSettings.DisplayOption;
+                colorOption   = Mod.ModSettings.ColorOption;
+                oneColor      = Mod.ModSettings.OneColor;
+
                 // Add bindings for C# to UI.
-                AddBinding(_bindingSelectedDistrict = new ValueBinding<Entity>(ModAssemblyInfo.Name, BindingNameSelectedDistrict, EntireCity                        ));
-                AddBinding(_bindingDistrictInfos    = new RawValueBinding     (ModAssemblyInfo.Name, BindingNameDistrictInfos,    WriteDistrictInfos                ));
-                AddBinding(_bindingDisplayOption    = new ValueBinding<int>   (ModAssemblyInfo.Name, BindingNameDisplayOption,    (int)Mod.ModSettings.DisplayOption));
-                AddBinding(_bindingColorOption      = new ValueBinding<int>   (ModAssemblyInfo.Name, BindingNameColorOption,      (int)Mod.ModSettings.ColorOption  ));
-                AddBinding(_bindingOneColor         = new ValueBinding<Color> (ModAssemblyInfo.Name, BindingNameOneColor,         Mod.ModSettings.OneColor          ));
-                AddBinding(_bindingResourceInfos    = new RawValueBinding     (ModAssemblyInfo.Name, BindingNameResourceInfos,    WriteResourceInfos                ));
+                AddBinding(_bindingSelectedDistrict = new ValueBinding<Entity>(ModAssemblyInfo.Name, BindingNameSelectedDistrict, EntireCity        ));
+                AddBinding(_bindingDistrictInfos    = new RawValueBinding     (ModAssemblyInfo.Name, BindingNameDistrictInfos,    WriteDistrictInfos));
+                AddBinding(_bindingDisplayOption    = new ValueBinding<int>   (ModAssemblyInfo.Name, BindingNameDisplayOption,    (int)displayOption));
+                AddBinding(_bindingColorOption      = new ValueBinding<int>   (ModAssemblyInfo.Name, BindingNameColorOption,      (int)colorOption  ));
+                AddBinding(_bindingOneColor         = new ValueBinding<Color> (ModAssemblyInfo.Name, BindingNameOneColor,         oneColor          ));
+                AddBinding(_bindingResourceInfos    = new RawValueBinding     (ModAssemblyInfo.Name, BindingNameResourceInfos,    WriteResourceInfos));
 
                 // Add bindings for UI to C#.
                 AddBinding(new TriggerBinding<Entity>(ModAssemblyInfo.Name, EventNameSelectedDistrictChanged,   SelectedDistrictChanged));
                 AddBinding(new TriggerBinding<int   >(ModAssemblyInfo.Name, EventNameDisplayOptionClicked,      DisplayOptionClicked   ));
                 AddBinding(new TriggerBinding<int   >(ModAssemblyInfo.Name, EventNameColorOptionClicked,        ColorOptionClicked     ));
-                AddBinding(new TriggerBinding<Color >(ModAssemblyInfo.Name, EventNameOneColorChanged,           OneColorChanged     ));
+                AddBinding(new TriggerBinding<Color >(ModAssemblyInfo.Name, EventNameOneColorChanged,           OneColorChanged        ));
 
                 // Define entity query to get districts.
                 _districtQuery = GetEntityQuery(ComponentType.ReadOnly<District>());

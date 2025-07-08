@@ -159,7 +159,7 @@ The following mods were used extensively in the development of this mod:
     <ForumLink Value="https://forum.paradoxplaza.com/forum/threads/resource-locator.1725428/" />
 
     <!-- Version of the mod.  Copied from assembly Version. -->
-    <ModVersion Value="1.5.0" />
+    <ModVersion Value="1.5.1" />
 
     <!-- Recommended version of the base game to use the mod. -->
     <GameVersion Value="1.3.*" />
@@ -173,8 +173,7 @@ The following mods were used extensively in the development of this mod:
 
     <!-- Change log.  Copied from ChangeLog.md file.  Supports minimal markdown subset. -->
     <ChangeLog>
-- Add ability to display all buildings with one color that you choose.
-- Save and restore Display Option between games.
+- Correctly restore saved UI options.
 </ChangeLog>
 
     <!-- External links.  Can be set multiple times. -->
