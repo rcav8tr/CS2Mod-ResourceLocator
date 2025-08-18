@@ -770,10 +770,11 @@ namespace ResourceLocator
         private int _previousMaxThreadEntriesStorageStores   = defaultMaxThreadEntries;
 
         // Arrays to hold total storage amounts by resource.
-        private int[] _totalStorageRequires = new int[Game.Economy.EconomyUtils.ResourceCount];
-        private int[] _totalStorageProduces = new int[Game.Economy.EconomyUtils.ResourceCount];
-        private int[] _totalStorageSells    = new int[Game.Economy.EconomyUtils.ResourceCount];
-        private int[] _totalStorageStores   = new int[Game.Economy.EconomyUtils.ResourceCount];
+        // Add 1 to account for Resource.Last that Modular Resource Blocks mod uses.
+        private int[] _totalStorageRequires = new int[Game.Economy.EconomyUtils.ResourceCount + 1];
+        private int[] _totalStorageProduces = new int[Game.Economy.EconomyUtils.ResourceCount + 1];
+        private int[] _totalStorageSells    = new int[Game.Economy.EconomyUtils.ResourceCount + 1];
+        private int[] _totalStorageStores   = new int[Game.Economy.EconomyUtils.ResourceCount + 1];
 
         // Lock for accessing total storage amounts.
         private readonly object _totalStorageLock = new object();

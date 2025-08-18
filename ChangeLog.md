@@ -1,1 +1,1 @@
-﻿- Correctly restore saved UI options.
+﻿- Fix incompatibility with Modular Resource Blocks mod.
