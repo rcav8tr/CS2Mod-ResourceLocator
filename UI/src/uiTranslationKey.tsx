@@ -88,6 +88,9 @@ export class UITranslationKey
     public static InfomodeTooltipEntertainment                      : string = "Infoviews.INFOMODE_TOOLTIP[ResourceLocatorEntertainment]";
     public static InfomodeTooltipRecreation                         : string = "Infoviews.INFOMODE_TOOLTIP[ResourceLocatorRecreation]";
 
+    // Special case infomode text.
+    public static InfomodeTooltipInTransit                          : string = "ResourceLocator.InTransit";
+
     // District selector text.
     public static EntireCity                                        : string = "ResourceLocator.EntireCity";
     public static DistrictSelectorTooltip                           : string = "ResourceLocator.DistrictSelectorTooltip";

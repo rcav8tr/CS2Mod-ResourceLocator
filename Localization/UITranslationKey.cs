@@ -90,6 +90,9 @@ namespace ResourceLocator
         public const string InfomodeTooltipEntertainment                       = "Infoviews.INFOMODE_TOOLTIP[ResourceLocatorEntertainment]";
         public const string InfomodeTooltipRecreation                          = "Infoviews.INFOMODE_TOOLTIP[ResourceLocatorRecreation]";
 
+        // Special case infomode text.
+        public const string InfomodeTooltipInTransit                           = "ResourceLocator.InTransit";
+
         // District selector text.
         public const string EntireCity                                         = "ResourceLocator.EntireCity";
         public const string DistrictSelectorTooltip                            = "ResourceLocator.DistrictSelectorTooltip";

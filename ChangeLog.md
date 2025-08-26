@@ -1,1 +1,2 @@
-﻿- Fix incompatibility with Modular Resource Blocks mod.
+﻿- Locate cargo vehicles transporting resources.
+- Show amount of cargo in transit.

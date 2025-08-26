@@ -15,6 +15,7 @@ namespace ResourceLocator
         public int StorageProduces  { get; set; }
         public int StorageSells     { get; set; }
         public int StorageStores    { get; set; }
+        public int StorageInTransit { get; set; }
 
         // Rate data.
         public int RateProduction   { get; set; }
@@ -28,19 +29,21 @@ namespace ResourceLocator
             int storageProduces,
             int storageSells,
             int storageStores,
+            int storageInTransit,
             int rateProduction,
             int rateSurplus,
             int rateDeficit
         )
         {
-            BuildingType    = buildingType;
-            StorageRequires = storageRequires;
-            StorageProduces = storageProduces;
-            StorageSells    = storageSells;
-            StorageStores   = storageStores;
-            RateProduction  = rateProduction;
-            RateSurplus     = rateSurplus;
-            RateDeficit     = rateDeficit;
+            BuildingType     = buildingType;
+            StorageRequires  = storageRequires;
+            StorageProduces  = storageProduces;
+            StorageSells     = storageSells;
+            StorageStores    = storageStores;
+            StorageInTransit = storageInTransit;
+            RateProduction   = rateProduction;
+            RateSurplus      = rateSurplus;
+            RateDeficit      = rateDeficit;
         }
 
         /// <summary>
@@ -59,6 +62,8 @@ namespace ResourceLocator
 			writer.Write(StorageSells);
 			writer.PropertyName("storageStores");
 			writer.Write(StorageStores);
+			writer.PropertyName("storageInTransit");
+			writer.Write(StorageInTransit);
 			writer.PropertyName("rateProduction");
 			writer.Write(RateProduction);
 			writer.PropertyName("rateSurplus");

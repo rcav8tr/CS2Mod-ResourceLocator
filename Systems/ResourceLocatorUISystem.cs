@@ -181,17 +181,23 @@ namespace ResourceLocator
 		    }
 
             // Get latest storage amounts.
-            _buildingColorSystem.GetStorageAmounts(out int[] storageRequires, out int[] storageProduces, out int[] storageSells, out int[] storageStores);
+            _buildingColorSystem.GetStorageAmounts(
+                out int[] storageRequires,
+                out int[] storageProduces,
+                out int[] storageSells,
+                out int[] storageStores,
+                out int[] storageInTransit);
 
             // Define variables to hold maximum of each value.
-            int maxStorageRequires = 0;
-            int maxStorageProduces = 0;
-            int maxStorageSells    = 0;
-            int maxStorageStores   = 0;
+            int maxStorageRequires  = 0;
+            int maxStorageProduces  = 0;
+            int maxStorageSells     = 0;
+            int maxStorageStores    = 0;
+            int maxStorageInTransit = 0;
 
-            int maxProduction      = 0;
-            int maxSurplus         = 0;
-            int maxDeficit         = 0;
+            int maxProduction       = 0;
+            int maxSurplus          = 0;
+            int maxDeficit          = 0;
 
             // Get resource info for each building type.
             ResourceInfos resourceInfos = new ResourceInfos();
@@ -216,22 +222,24 @@ namespace ResourceLocator
                 int deficit = consumption - minConsumptionProduction;
 
                 // Compute max values.
-                maxStorageRequires = Math.Max(maxStorageRequires, storageRequires[resourceIndex]);
-                maxStorageProduces = Math.Max(maxStorageProduces, storageProduces[resourceIndex]);
-                maxStorageSells    = Math.Max(maxStorageSells,    storageSells   [resourceIndex]);
-                maxStorageStores   = Math.Max(maxStorageStores,   storageStores  [resourceIndex]);
+                maxStorageRequires  = Math.Max(maxStorageRequires,  storageRequires [resourceIndex]);
+                maxStorageProduces  = Math.Max(maxStorageProduces,  storageProduces [resourceIndex]);
+                maxStorageSells     = Math.Max(maxStorageSells,     storageSells    [resourceIndex]);
+                maxStorageStores    = Math.Max(maxStorageStores,    storageStores   [resourceIndex]);
+                maxStorageInTransit = Math.Max(maxStorageInTransit, storageInTransit[resourceIndex]);
                 
-                maxProduction      = Math.Max(maxProduction,      production                    );
-                maxSurplus         = Math.Max(maxSurplus,         surplus                       );
-                maxDeficit         = Math.Max(maxDeficit,         deficit                       );
+                maxProduction       = Math.Max(maxProduction,       production                     );
+                maxSurplus          = Math.Max(maxSurplus,          surplus                        );
+                maxDeficit          = Math.Max(maxDeficit,          deficit                        );
 
                 // Add a new resource info.
                 resourceInfos.Add(new ResourceInfo(
                     buildingType,
-                    storageRequires[resourceIndex],
-                    storageProduces[resourceIndex],
-                    storageSells   [resourceIndex],
-                    storageStores  [resourceIndex],
+                    storageRequires [resourceIndex],
+                    storageProduces [resourceIndex],
+                    storageSells    [resourceIndex],
+                    storageStores   [resourceIndex],
+                    storageInTransit[resourceIndex],
                     production, 
                     surplus, 
                     deficit));
@@ -247,6 +255,7 @@ namespace ResourceLocator
                 maxStorageProduces,
                 maxStorageSells,
                 maxStorageStores,
+                maxStorageInTransit,
                 maxProduction, 
                 maxSurplus, 
                 maxDeficit));

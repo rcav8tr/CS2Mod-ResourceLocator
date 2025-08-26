@@ -256,6 +256,9 @@
 "InfomodeTooltipRecreation","@@UsedBy **@@Consumers**","@@UsedBy **@@Consumers**","@@UsedBy **@@Consumers**","@@UsedBy **@@Consumers**","@@UsedBy **@@Consumers**","@@UsedBy **@@Consumers**","@@UsedBy **@@Consumers**","@@UsedBy **@@Consumers**","@@UsedBy **@@Consumers**","@@UsedBy **@@Consumers**","@@UsedBy **@@Consumers**","@@UsedBy **@@Consumers**"
 "InfomodeTooltipRecreation","@@LocalOnly","@@LocalOnly","@@LocalOnly","@@LocalOnly","@@LocalOnly","@@LocalOnly","@@LocalOnly","@@LocalOnly","@@LocalOnly","@@LocalOnly","@@LocalOnly","@@LocalOnly"
 ,,,,,,,,,,,,
+"# Special case infomode text.",,,,,,,,,,,,
+"InfomodeTooltipInTransit","In Transit","Unterwegs","En tránsito","En transit","In transito","輸送中","운송 중","W tranzycie","Em trânsito","В пути","在途中","在途中"
+,,,,,,,,,,,,
 ,,,,,,,,,,,,
 ,,,,,,,,,,,,
 "# District selector text.",,,,,,,,,,,,
@@ -273,7 +276,7 @@
 "ImmaterialGoods","$$EconomyPanel.RESOURCE_CATEGORY[Immaterial Goods]","$$EconomyPanel.RESOURCE_CATEGORY[Immaterial Goods]","$$EconomyPanel.RESOURCE_CATEGORY[Immaterial Goods]","$$EconomyPanel.RESOURCE_CATEGORY[Immaterial Goods]","$$EconomyPanel.RESOURCE_CATEGORY[Immaterial Goods]","$$EconomyPanel.RESOURCE_CATEGORY[Immaterial Goods]","$$EconomyPanel.RESOURCE_CATEGORY[Immaterial Goods]","$$EconomyPanel.RESOURCE_CATEGORY[Immaterial Goods]","$$EconomyPanel.RESOURCE_CATEGORY[Immaterial Goods]","$$EconomyPanel.RESOURCE_CATEGORY[Immaterial Goods]","$$EconomyPanel.RESOURCE_CATEGORY[Immaterial Goods]","$$EconomyPanel.RESOURCE_CATEGORY[Immaterial Goods]"
 ,,,,,,,,,,,,
 "# Unit of measure text.",,,,,,,,,,,,
-"UnitOfMeasurePrefixKilo","k","k",,"k","k","k","k","k","k","к ","千","千"
+"UnitOfMeasurePrefixKilo","k","k","k","k","k","k","k","k","k","к ","千","千"
 ,,,,,,,,,,,,
 ,,,,,,,,,,,,
 "# Settings.",,,,,,,,,,,,

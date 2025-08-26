@@ -29,6 +29,7 @@ type ResourceInfo =
     storageProduces:    number;
     storageSells:       number;
     storageStores:      number;
+    storageInTransit:   number;
     
     rateProduction:     number;
     rateSurplus:        number;
@@ -59,10 +60,11 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     const translationBuildingColor      = translate("Infoviews.INFOMODE_TYPE[BuildingColor]");
     const translationThousandsSeparator = translate("Common.THOUSANDS_SEPARATOR", ",") + "";
     const translationStorage            = translate("SelectedInfoPanel.WAREHOUSE_STORAGE");
-    const translationStorageRequires    = translationStorage + " - " + translate(UITranslationKey.DisplayOptionRequires) + ": ";
-    const translationStorageProduces    = translationStorage + " - " + translate(UITranslationKey.DisplayOptionProduces) + ": ";
-    const translationStorageSells       = translationStorage + " - " + translate(UITranslationKey.DisplayOptionSells   ) + ": ";
-    const translationStorageStores      = translationStorage + " - " + translate(UITranslationKey.DisplayOptionStores  ) + ": ";
+    const translationStorageRequires    = translationStorage + " - " + translate(UITranslationKey.DisplayOptionRequires   ) + ": ";
+    const translationStorageProduces    = translationStorage + " - " + translate(UITranslationKey.DisplayOptionProduces   ) + ": ";
+    const translationStorageSells       = translationStorage + " - " + translate(UITranslationKey.DisplayOptionSells      ) + ": ";
+    const translationStorageStores      = translationStorage + " - " + translate(UITranslationKey.DisplayOptionStores     ) + ": ";
+    const translationInTransit          =                              translate(UITranslationKey.InfomodeTooltipInTransit) + ": ";
     const translationRateProduction     = translate("EconomyPanel.PRODUCTION_PAGE_PRODUCTION") + ": ";
     const translationRateSurplus        = translate("EconomyPanel.PRODUCTION_PAGE_SURPLUS"   ) + ": "
     const translationRateDeficit        = translate("EconomyPanel.PRODUCTION_PAGE_DEFICIT"   ) + ": "
@@ -82,6 +84,7 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     let valueStorageProduces:   number = 0;
     let valueStorageSells:      number = 0;
     let valueStorageStores:     number = 0;
+    let valueStorageInTransit:  number = 0;
 
     let valueRateProduction:    number = 0;
     let valueRateSurplus:       number = 0;
@@ -101,6 +104,7 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
             valueStorageProduces    = resourceInfo.storageProduces;
             valueStorageSells       = resourceInfo.storageSells;
             valueStorageStores      = resourceInfo.storageStores;
+            valueStorageInTransit   = resourceInfo.storageInTransit;
 
             valueRateProduction     = resourceInfo.rateProduction;
             valueRateSurplus        = resourceInfo.rateSurplus;
@@ -126,8 +130,8 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
             case DisplayOption.Stores:   valueStorageMaxAll = maxResourceInfo.storageStores;   break;
         }
 
-        // Get max rate value between production, surplus, and deficit.
-        valueRateMaxAll = Math.max(valueRateMaxAll, maxResourceInfo.rateProduction, maxResourceInfo.rateSurplus, maxResourceInfo.rateDeficit);
+        // Get max rate value between display option, in transit, production, surplus, and deficit.
+        valueRateMaxAll = Math.max(valueRateMaxAll, maxResourceInfo.storageInTransit, maxResourceInfo.rateProduction, maxResourceInfo.rateSurplus, maxResourceInfo.rateDeficit);
     }
 
     // Function to compute a value as a percent of a max.
@@ -172,14 +176,15 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     {
         // Convert this resource's values from kg to pounds.
         const poundsPerKG: number = 2.204622622;
-        valueStorageRequires = Math.round(valueStorageRequires * poundsPerKG);
-        valueStorageProduces = Math.round(valueStorageProduces * poundsPerKG);
-        valueStorageSells    = Math.round(valueStorageSells    * poundsPerKG);
-        valueStorageStores   = Math.round(valueStorageStores   * poundsPerKG);
+        valueStorageRequires  = Math.round(valueStorageRequires  * poundsPerKG);
+        valueStorageProduces  = Math.round(valueStorageProduces  * poundsPerKG);
+        valueStorageSells     = Math.round(valueStorageSells     * poundsPerKG);
+        valueStorageStores    = Math.round(valueStorageStores    * poundsPerKG);
+        valueStorageInTransit = Math.round(valueStorageInTransit * poundsPerKG);
 
-        valueRateProduction  = Math.round(valueRateProduction  * poundsPerKG);
-        valueRateSurplus     = Math.round(valueRateSurplus     * poundsPerKG);
-        valueRateDeficit     = Math.round(valueRateDeficit     * poundsPerKG);
+        valueRateProduction   = Math.round(valueRateProduction   * poundsPerKG);
+        valueRateSurplus      = Math.round(valueRateSurplus      * poundsPerKG);
+        valueRateDeficit      = Math.round(valueRateDeficit      * poundsPerKG);
     }
 
     // Get maximum between storage and rate values for this resource.
@@ -188,6 +193,7 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
         valueStorageProduces,
         valueStorageSells,
         valueStorageStores,
+        valueStorageInTransit,
 
         valueRateProduction,
         valueRateSurplus,
@@ -252,14 +258,15 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     }
 
     // Apply scaling factor to storage and rate values.
-    const valueScaledStorageRequires: number = Math.round(valueStorageRequires / scalingFactor);
-    const valueScaledStorageProduces: number = Math.round(valueStorageProduces / scalingFactor);
-    const valueScaledStorageSells:    number = Math.round(valueStorageSells    / scalingFactor);
-    const valueScaledStorageStores:   number = Math.round(valueStorageStores   / scalingFactor);
+    const valueScaledStorageRequires:  number = Math.round(valueStorageRequires  / scalingFactor);
+    const valueScaledStorageProduces:  number = Math.round(valueStorageProduces  / scalingFactor);
+    const valueScaledStorageSells:     number = Math.round(valueStorageSells     / scalingFactor);
+    const valueScaledStorageStores:    number = Math.round(valueStorageStores    / scalingFactor);
+    const valueScaledStorageInTransit: number = Math.round(valueStorageInTransit / scalingFactor);
 
-    const valueScaledRateProduction:  number = Math.round(valueRateProduction  / scalingFactor);
-    const valueScaledRateSurplus:     number = Math.round(valueRateSurplus     / scalingFactor);
-    const valueScaledRateDeficit:     number = Math.round(valueRateDeficit     / scalingFactor);
+    const valueScaledRateProduction:   number = Math.round(valueRateProduction   / scalingFactor);
+    const valueScaledRateSurplus:      number = Math.round(valueRateSurplus      / scalingFactor);
+    const valueScaledRateDeficit:      number = Math.round(valueRateDeficit      / scalingFactor);
 
     // Remove variable placeholders from unit of measure text.
     storageUOMText = "" + storageUOMText?.replace("{SIGN}{VALUE}", "");
@@ -275,10 +282,11 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     }
 
     // Compute formatted storage and rate values.
-    const formattedStorageRequires:     string = FormatValue(valueScaledStorageRequires, storageUOMText);
-    const formattedStorageProduces:     string = FormatValue(valueScaledStorageProduces, storageUOMText);
-    const formattedStorageSells:        string = FormatValue(valueScaledStorageSells,    storageUOMText);
-    const formattedStorageStores:       string = FormatValue(valueScaledStorageStores,   storageUOMText);
+    const formattedStorageRequires:     string = FormatValue(valueScaledStorageRequires,  storageUOMText);
+    const formattedStorageProduces:     string = FormatValue(valueScaledStorageProduces,  storageUOMText);
+    const formattedStorageSells:        string = FormatValue(valueScaledStorageSells,     storageUOMText);
+    const formattedStorageStores:       string = FormatValue(valueScaledStorageStores,    storageUOMText);
+    const formattedInTransit:           string = FormatValue(valueScaledStorageInTransit, storageUOMText);
 
     const valueScaledRateSurplusDeficit: number = valueScaledRateDeficit > 0 ? valueScaledRateDeficit : valueScaledRateSurplus;
     const formattedRateProduction:      string = FormatValue(valueScaledRateProduction,     rateUOMText);
@@ -345,6 +353,10 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
                         <div className={styles.resourceLocatorInfomodeDataRow} style={styleColorStores}>
                             <div className={styles.resourceLocatorInfomodeDataRowHeading}>{translationStorageStores}</div>
                             <div className={styles.resourceLocatorInfomodeDataRowValue}>{formattedStorageStores}</div>
+                        </div>
+                        <div className={styles.resourceLocatorInfomodeDataRow}>
+                            <div className={styles.resourceLocatorInfomodeDataRowHeading}>{translationInTransit}</div>
+                            <div className={styles.resourceLocatorInfomodeDataRowValue}>{formattedInTransit}</div>
                         </div>
                     </div>
                     <div className={styles.resourceLocatorInfomodeData}>

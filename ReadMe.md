@@ -1,5 +1,6 @@
 ﻿# Resource Locator
 New info view to locate buildings where resources are required, produced, sold, and stored.
+Locate cargo vehicles transporting resources.
 
 # Description
 With this info view, you can:
@@ -9,23 +10,28 @@ With this info view, you can:
 - View production/surplus/deficit rates for buildings that produce or consume each resource.
 - View individual districts.
 - View individual resources.
+- View which cargo vehicles are transporting resources.
+- View amount of cargo in transit.
 
 ### District Selector
 If your city has districts:
-- The District Selector is visible.
-- Resource locations are for the Entire City or for buildings in a single selected district.
+- The **District Selector** is visible.
+- If **Entire City** is selected, resource locations (buildings and vehicles) are for the Entire City.
+- If a single district is selected, resource locations (buildings and vehicles) are for only the selected district.
+  The vehicle owner's property determines the vehicle's district.
 - Districts are listed alphabetically.
-- The default is Entire City every time a game is started.
+- The default is **Entire City** every time a game is started.
 
 If your city has no districts:
-- The District Selector is hidden.
-- Resource locations are for the Entire City.
+- The **District Selector** is hidden.
+- Resource locations (buildings and vehicles) are for the Entire City.
 
 ### Display Option
-- The Requires, Produces, Sells, and Stores options show buildings that require, produce, sell, or store a selected resource.
+- The Requires, Produces, Sells, and Stores options show buildings that require, produce, sell, or store a **selected resource**.
 - These options match the game's building information when you click on a building.
-- The color of each building indicates that the corresponding selected resource is being used by that building according to the selected Display Option.
-- Only one Display Option can be selected at a time.
+- The color of each building indicates that the corresponding selected resource is being used by that building according to the selected **Display Option**.
+- Only one **Display Option** can be selected at a time.
+- **Display Option** does not affect **Cargo Vehicles** (see below).
 
 ### Color Option
 - Use multiple colors or one color for the resources.
@@ -38,7 +44,8 @@ If your city has no districts:
 - You can select all or deselect all resources.
 - You can select and deselect individual resources.
 - To view only one resource, deselect all resources and then select only the one resource you want view.
-- The Resource Selections are grouped and ordered the same as on the Production tab of the City Economy view.
+- The **Building Color** check box also controls whether or not vehicle color is set.
+- The **Resource Selections** are grouped and ordered the same as on the Production tab of the City Economy view.
 
 ### Detailed Resource Information
 Hover the cursor over a resource to get detailed information about that resource:
@@ -47,17 +54,19 @@ Hover the cursor over a resource to get detailed information about that resource
 - Other uses of this resource (e.g. Electricity, Heating, Upkeep, etc.)
 - Whether this resource can be imported/exported or the resource is available only locally.
 - Current amount stored in buildings that require, produce, sell, or store this resource.
-  Storage is for the selected district.
-  If the Options settings are turned on, resources produced in special case buildings are included in: Storage - Produces.
-  If the Options settings are turned on, resources stored in special case buildings are included in: Storage - Stores.
-- For each Display Option, current amount stored is also shown in an orange bar behind the resource name.
+  Storage is for the **selected district**.
+  If the **Options** settings are turned on, resources produced in special case buildings are included in: Storage - Produces.
+  If the **Options** settings are turned on, resources stored in special case buildings are included in: Storage - Stores.
+- For each **Display Option**, current amount stored is also shown in an orange bar behind the resource name.
   The resource with the largest amount stored has a full bar and the other bars are sized relative to that one.
 - Current production rate and surplus/deficit rate of this resource.
-  Rates are for the entire city, even if a district is selected.
+  Rates are for the Entire City, even if a district is selected.
   The simulation must run for a bit for the rates to be updated by the game.
-- For the Produces Display Option, the production, surplus, and deficit rates are also shown in the blue, green, and red bars behind the resource name.
+- For the Produces **Display Option**, the production, surplus, and deficit rates are also shown in the blue, green, and red bars behind the resource name.
   The resource with the largest production, surplus, or deficit has a full bar and the other bars are sized relative to that one.
 - Most of the above is the same information available on the Production tab of the City Economy view.
+- Current amount in transit on cargo vehicles (see **Cargo Vehicles** below).
+  **In Transit** amount can include resources being transported between outside connections.
 
 ### Buildings With A Single Resource
 - If a building requires, produces, sells, or stores only one resource, the building color is set according to that resource.
@@ -67,10 +76,10 @@ Hover the cursor over a resource to get detailed information about that resource
 - Many buildings require more than one resource.
 - Most buildings produce only one resource (exception is Recycling Center).
 - Most buildings store only one resource (exception is cargo transport buildings).
-- If a building requires, produces, or stores more than one resource, the building color is set according to the top selected resource.
+- If a building requires, produces, or stores more than one resource, the building color is set according to the top **selected resource**.
   For example, Steel requires both Coal and Metals.
-  If the Display Option is Requires and both Coal and Metals resources are selected,
-  then a building that produces Steel is colored for Coal because Coal is higher in the list than Metals.
+  If the **Display Option** is Requires and both Coal and Metals resources are selected,
+  then for a building that produces Steel, the color is set for Coal because Coal is higher in the list than Metals.
 - To view these buildings in their other color(s), deselect the top resource of the building.
 
 ### Special Case Buildings
@@ -87,8 +96,22 @@ The special case buildings are:
 - Cargo Transport Station - Stores multiple resources that can be used by the city and imported/exported.
   Buildings include:  Cargo Train Terminal, Cargo Harbor, Airport with the Cargo Terminal upgrade, and International Airport.
 
+See **Options** for whether or not special case buildings are included.
+
 ### Excluded Buildings
 Abandoned, condemned, deleted, and destroyed buildings are excluded.
+
+### Cargo Vehicles
+- Vehicle color is set only for cargo vehicles, not for any other vehicles.
+- Vehicle color is set according to the **selected resource** being transported by the vehicle.
+- Vehicle color is not set if the vehicle is empty.
+- Only cargo ships and cargo planes can transport more than one resource at a time.
+  All other cargo vehicles can transport only one resource at a time.
+- If a vehicle is transporting only one resource, vehicle color is set according to that resource.
+- If a vehicle is transporting more than one resource, vehicle color is set according to the top **selected resource** that the vehicle is transporting.
+- The selected **Display Option** does not affect how vehicle color is set.
+- A vehicle is included only if the vehicle's district is the **selected district**.
+  The vehicle's district is determined by the vehicle owner's property.
 
 # Options
 The following settings are available on the Options screen.
@@ -98,9 +121,11 @@ You can choose to include or exclude (default) special case buildings.
 The special case buildings are listed above.
 
 When a special case building is included:
-- Building color is set according to the selected Display Option and selected resources.
-- Resources produced at the building are included in Storage - Produces.
-- Resources stored at the building are included in Storage - Stores.
+- Building color is set according to the selected **Display Option** and selected resources.
+- Resources produced at the building are included in **Storage - Produces**.
+- Resources stored at the building are included in **Storage - Stores**.
+- Vehicle color is set according to the **selected resources**.
+- Vehicles owned by the building are included in **In Transit** amount.
 
 # Compatibility
 The mod is translated into all the languages supported by the base game.
@@ -113,9 +138,9 @@ To receive an invitation to the Discord server for mod discussion, go to:  [http
 
 # Possible Future Enhancements
 Here are some possible future enhancements that were thought about during development but not included initially:
-- Allow the player to locate buildings for selected resources by showing an icon above each building.
+- Allow the player to locate buildings for **selected resources** by showing an icon above each building.
 - By default, the game turns on all resources each time the infoview is displayed.
-  Save the selected resources to be used the next time the infoview is displayed.
+  Save the **selected resources** to be used the next time the infoview is displayed.
   Possibly do this as a separate mod for all infoviews, not just for the infoview for this mod.
 
 # Acknowledgements

@@ -187,6 +187,12 @@ namespace ResourceLocator
             sb.AppendLine();
             sb.Append(GetTranslationsContent(csFile, "Infomode tooltips.", infomodeTooltips));
 
+            // Include special case infomode text.
+            UIConstants SpecialCaseInfoModeText = new UIConstants();
+            SpecialCaseInfoModeText.Add("InfomodeTooltipInTransit", $"{ModAssemblyInfo.Name}.InTransit");
+            sb.AppendLine();
+            sb.Append(GetTranslationsContent(csFile, "Special case infomode text.", SpecialCaseInfoModeText));
+
             // Include district selector text.
             TranslationKeys districtSelectorText = new TranslationKeys() { "EntireCity", "DistrictSelectorTooltip", };
             sb.AppendLine();

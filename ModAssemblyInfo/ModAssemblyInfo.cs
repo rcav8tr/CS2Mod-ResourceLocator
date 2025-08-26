@@ -10,7 +10,7 @@ namespace ResourceLocator
     public class ModAssemblyInfo
     {
         public const string Name        = "ResourceLocator";
-        public const string Version     = "1.5.2";
+        public const string Version     = "2.0.0";
         public const string Title       = "Resource Locator";
         public const string Description = "New info view to locate buildings where resources are required, produced, sold, and stored.";
     }
