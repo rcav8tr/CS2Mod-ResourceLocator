@@ -1,5 +1,17 @@
 ﻿using Colossal.Collections;
+using Game;
+using Game.Areas;
+using Game.Buildings;
+using Game.Common;
+using Game.Companies;
+using Game.Creatures;
+using Game.Economy;
+using Game.Objects;
 using Game.Prefabs;
+using Game.Rendering;
+using Game.Tools;
+using Game.UI.InGame;
+using Game.Vehicles;
 using HarmonyLib;
 using System;
 using System.Collections.Generic;
@@ -11,6 +23,20 @@ using Unity.Entities;
 using Unity.Jobs;
 using Unity.Jobs.LowLevel.Unsafe;
 using UnityEngine.Scripting;
+using BuildingFlags         = Game.Prefabs.     BuildingFlags;
+using CargoTransport        = Game.Vehicles.    CargoTransport;
+using CargoTransportStation = Game.Buildings.   CargoTransportStation;
+using DeliveryTruck         = Game.Vehicles.    DeliveryTruck;
+using EmergencyShelter      = Game.Buildings.   EmergencyShelter;
+using ExtractorCompany      = Game.Companies.   ExtractorCompany;
+using GarbageFacility       = Game.Buildings.   GarbageFacility;
+using Hospital              = Game.Buildings.   Hospital;
+using Object                = Game.Objects.     Object;
+using OutsideConnection     = Game.Objects.     OutsideConnection;
+using ProcessingCompany     = Game.Companies.   ProcessingCompany;
+using ResourceProducer      = Game.Buildings.   ResourceProducer;
+using StorageCompany        = Game.Companies.   StorageCompany;
+using UtilityObject         = Game.Objects.     UtilityObject;
 
 namespace ResourceLocator
 {
@@ -19,7 +45,7 @@ namespace ResourceLocator
     /// Adapted from Game.Rendering.ObjectColorSystem.
     /// This system replaces the game's ObjectColorSystem logic when this mod's infoview is selected.
     /// </summary>
-    public partial class BuildingColorSystem : Game.GameSystemBase
+    public partial class BuildingColorSystem : GameSystemBase
     {
         /// <summary>
         /// Information for an active infomode.
@@ -27,7 +53,7 @@ namespace ResourceLocator
         private struct ActiveInfomode : IComparable<ActiveInfomode>
         {
             // Resource and its corresponding infomode index.
-            public Game.Economy.Resource resource;
+            public Resource resource;
             public byte infomodeIndex;
 
             // Building type is used only for sorting.
@@ -47,18 +73,23 @@ namespace ResourceLocator
         private partial struct UpdateColorsJobDefault : IJobChunk
         {
             // Color component type to update.
-            public ComponentTypeHandle<Game.Objects.Color> ComponentTypeHandleColor;
+            public ComponentTypeHandle<Color> ComponentTypeHandleColor;
 
             /// <summary>
             /// Job execution.
             /// </summary>
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                // Set color to default for all objects.
-                NativeArray<Game.Objects.Color> colors = chunk.GetNativeArray(ref ComponentTypeHandleColor);
+                // Do all objects.
+                NativeArray<Color> colors = chunk.GetNativeArray(ref ComponentTypeHandleColor);
                 for (int i = 0; i < colors.Length; i++)
                 {
-                    colors[i] = default;
+                    // Set color index and value to default.
+                    // SubColor remains unchanged.
+                    Color color = colors[i];
+                    color.m_Index = 0;
+                    color.m_Value = 0;
+                    colors[i] = color;
                 }
             }
         }
@@ -72,20 +103,22 @@ namespace ResourceLocator
         private struct UpdateColorsJobCargoVehicle : IJobChunk
         {
             // Color component type to update (not ReadOnly).
-                                                  public ComponentTypeHandle<Game.Objects.Color> ComponentTypeHandleColor;
-            [NativeDisableParallelForRestriction] public ComponentLookup    <Game.Objects.Color> ComponentLookupColor;
+                                                  public ComponentTypeHandle<Color> ComponentTypeHandleColor;
+            [NativeDisableParallelForRestriction] public ComponentLookup    <Color> ComponentLookupColor;
 
             // Buffer lookups.
-            [ReadOnly] public BufferLookup<Game.Economy.            Resources       > BufferLookupResources;
+            [ReadOnly] public BufferLookup<Resources            > BufferLookupResources;
 
             // Component lookups.
-            [ReadOnly] public ComponentLookup<Game.Vehicles.        Controller      > ComponentLookupController;
-            [ReadOnly] public ComponentLookup<Game.Areas.           CurrentDistrict > ComponentLookupCurrentDistrict;
-            [ReadOnly] public ComponentLookup<Game.Common.          Owner           > ComponentLookupOwner;
-            [ReadOnly] public ComponentLookup<Game.Buildings.       PropertyRenter  > ComponentLookupPropertyRenter;
+            [ReadOnly] public ComponentLookup<Controller        > ComponentLookupController;
+            [ReadOnly] public ComponentLookup<CurrentDistrict   > ComponentLookupCurrentDistrict;
+            [ReadOnly] public ComponentLookup<OutsideConnection > ComponentLookupOutsideConnection;
+            [ReadOnly] public ComponentLookup<Owner             > ComponentLookupOwner;
+            [ReadOnly] public ComponentLookup<PropertyRenter    > ComponentLookupPropertyRenter;
+            [ReadOnly] public ComponentLookup<Target            > ComponentLookupTarget;
 
             // Component type handles.
-            [ReadOnly] public ComponentTypeHandle<Game.Vehicles.    DeliveryTruck   > ComponentTypeHandleDeliveryTruck;
+            [ReadOnly] public ComponentTypeHandle<DeliveryTruck > ComponentTypeHandleDeliveryTruck;
 
             // Entity type handle.
             [ReadOnly] public EntityTypeHandle EntityTypeHandle;
@@ -93,15 +126,15 @@ namespace ResourceLocator
             // Active infomodes.
             [ReadOnly] public NativeArray<ActiveInfomode> ActiveInfomodes;
 
+            // Selected district.
+            [ReadOnly] public Entity SelectedDistrict;
+            [ReadOnly] public bool SelectedDistrictIsEntireCity;
+
             // Nested arrays to return in transit amounts to the BuildingColorSystem.
             // The outer array is one for each possible thread.
             // The inner array is one for each resource.
             // Even though the outer array is read only, entries in the inner array can still be updated.
-            [ReadOnly] public NativeArray<NativeArray<int>> StorageAmountInTransit;
-
-            // Selected district.
-            [ReadOnly] public Entity SelectedDistrict;
-            [ReadOnly] public bool SelectedDistrictIsEntireCity;
+            [ReadOnly] public NativeArray<NativeArray<int>> StorageAmountsInTransit;
 
             /// <summary>
             /// Job execution.
@@ -109,10 +142,15 @@ namespace ResourceLocator
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
                 // Get colors to change.
-                NativeArray<Game.Objects.Color> colors = chunk.GetNativeArray(ref ComponentTypeHandleColor);
+                NativeArray<Color> colors = chunk.GetNativeArray(ref ComponentTypeHandleColor);
 
                 // Get delivery truck vs cargo transport.
-                NativeArray<Game.Vehicles.DeliveryTruck> deliveryTrucks = chunk.GetNativeArray(ref ComponentTypeHandleDeliveryTruck);
+                // Note that the following are neither and do not actually carry any resource (i.e. no Resource buffer).
+                // Therefore, these are not colorized:
+                //      Reach Stacker
+                //      Fishing Boat
+                //      Oil Tanker
+                NativeArray<DeliveryTruck> deliveryTrucks = chunk.GetNativeArray(ref ComponentTypeHandleDeliveryTruck);
                 bool isDeliveryTruck = deliveryTrucks.Length > 0;
 
                 // Do each cargo vehicle.
@@ -122,40 +160,36 @@ namespace ResourceLocator
                     // Get the vehicle.
                     Entity vehicleEntity = entities[i];
 
-                    // Determine if vehicle for the selected district.
-                    // For Entire City, all vehicles are for the selected district.
-                    bool vehicleIsForSelectedDistrict = SelectedDistrictIsEntireCity;
-                    if (!SelectedDistrictIsEntireCity)
+                    // For DelveryTruck vehicles:
+                    //      The Delivery Van, Coal (Dump) Truck, Oil Truck, and Delivery Motorbike have an owner directly.
+                    //      The Semi Truck has a controller, which then has an owner.
+
+                    // For CargoTransport vehicles:
+                    //      The Ship and Airplane have an owner directly.
+                    //      The Train car has a controller, which then has an owner.
+
+                    // The vehicle to check is either the vehicle itself or the vehicle's controller if one is present.
+                    Entity vehicleToCheck = vehicleEntity;
+                    if (ComponentLookupController.TryGetComponent(vehicleEntity, out Controller vehicleController))
                     {
-                        // A vehicle is included only if the vehicle's district is the selected district.
-                        // The vehicle's district is determined by the vehicle owner's property.
+                        vehicleToCheck = vehicleController.m_Controller;
+                    }
 
-                        // For DelveryTruck vehicles:
-                        //      The Delivery Van, Coal (Dump) Truck, Oil Truck, and Delivery Motorbike have an owner directly.
-                        //      The Semi Truck has a controller, which then has an owner.
-
-                        // For CargoTransport vehicles:
-                        //      The Ship and Airplane have an owner directly.
-                        //      The Train car has a controller, which then has an owner.
-
-                        // Once a vehicle's owner is known:
-                        //      If a vehicle's owner has a property renter, then the property renter determines the district.
-                        //      Otherwise the vehicle's owner is a property and that property determines the district.
-
-                        // The vehicle to check is either the vehicle itself or the vehicle's controller if one is present.
-                        Entity vehicleToCheck = vehicleEntity;
-                        if (ComponentLookupController.TryGetComponent(vehicleEntity, out Game.Vehicles.Controller vehicleController))
+                    // Get vehicle owner.
+                    // Vehicle to check should always have an owner.
+                    if (ComponentLookupOwner.TryGetComponent(vehicleToCheck, out Owner vehicleOwner))
+                    {
+                        // Determine if vehicle is for the selected district.
+                        // For Entire City, all vehicles are for the selected district.
+                        bool vehicleIsForSelectedDistrict = SelectedDistrictIsEntireCity;
+                        if (!SelectedDistrictIsEntireCity)
                         {
-                            vehicleToCheck = vehicleController.m_Controller;
-                        }
+                            // A vehicle is included only if the vehicle's district is the selected district.
+                            // The vehicle's district is determined by the vehicle owner's property.
 
-                        // Get the owner of the vehicle to check.
-                        // Vehicle to check should always have an owner.
-                        Entity propertyToCheck = Entity.Null;
-                        if (ComponentLookupOwner.TryGetComponent(vehicleToCheck, out Game.Common.Owner vehicleOwner))
-                        {
-                            // If vehicle's owner has property renter, use it.
-                            if (ComponentLookupPropertyRenter.TryGetComponent(vehicleOwner.m_Owner, out Game.Buildings.PropertyRenter propertyRenter))
+                            // Get vehicle's owner property renter, if any.
+                            Entity propertyToCheck;
+                            if (ComponentLookupPropertyRenter.TryGetComponent(vehicleOwner.m_Owner, out PropertyRenter propertyRenter))
                             {
                                 // Property to check is the property of the property renter.
                                 propertyToCheck = propertyRenter.m_Property;
@@ -165,25 +199,34 @@ namespace ResourceLocator
                                 // Property to check is the direct owner of the vehicle to check.
                                 propertyToCheck = vehicleOwner.m_Owner;
                             }
+
+                            // Determine if the property to check is in the selected district.
+                            vehicleIsForSelectedDistrict = 
+                                ComponentLookupCurrentDistrict.TryGetComponent(propertyToCheck, out CurrentDistrict currentDistrict) &&
+                                currentDistrict.m_District == SelectedDistrict;
                         }
 
-                        // Determine if the property to check is in the selected district.
-                        vehicleIsForSelectedDistrict = 
-                            ComponentLookupCurrentDistrict.TryGetComponent(propertyToCheck, out Game.Areas.CurrentDistrict currentDistrict) &&
-                            currentDistrict.m_District == SelectedDistrict;
-                    }
+                        // Determine if vehicle's owner is an outside connection.
+                        bool ownerIsOutsideConnection = ComponentLookupOutsideConnection.HasComponent(vehicleOwner.m_Owner);
 
-                    // Vehicle must be for the selected district.
-                    if (vehicleIsForSelectedDistrict)
-                    {
-                        // Set vehicle color according to delivery truck vs cargo transport.
-                        if (isDeliveryTruck)
+                        // Determine if vehicle's target is an outside connection.
+                        bool targetIsOutsideConnection = 
+                            ComponentLookupTarget.TryGetComponent(vehicleToCheck, out Target vehicleTarget) &&
+                            ComponentLookupOutsideConnection.HasComponent(vehicleTarget.m_Target);
+
+                        // Vehicle must be for the selected district.
+                        // Vehicle must not be traveling between two outside connections.
+                        if (vehicleIsForSelectedDistrict && !(ownerIsOutsideConnection && targetIsOutsideConnection))
                         {
-                            SetVehicleColorDeliveryTruck(vehicleEntity, i, deliveryTrucks[i], ref colors);
-                        }
-                        else
-                        {
-                            SetVehicleColorCargoTransport(vehicleEntity, i, ref colors);
+                            // Set vehicle color according to delivery truck vs cargo transport.
+                            if (isDeliveryTruck)
+                            {
+                                SetVehicleColorDeliveryTruck(vehicleEntity, i, deliveryTrucks[i], ref colors);
+                            }
+                            else
+                            {
+                                SetVehicleColorCargoTransport(vehicleEntity, i, ref colors);
+                            }
                         }
                     }
                 }
@@ -192,14 +235,14 @@ namespace ResourceLocator
             /// <summary>
             /// Set vehicle color for a delivery truck.
             /// </summary>
-            private void SetVehicleColorDeliveryTruck(Entity vehicleEntity, int vehicleIndex, Game.Vehicles.DeliveryTruck deliveryTruck, ref NativeArray<Game.Objects.Color> colors)
+            private void SetVehicleColorDeliveryTruck(Entity vehicleEntity, int vehicleIndex, DeliveryTruck deliveryTruck, ref NativeArray<Color> colors)
             {
                 // Delivery truck must be loaded with a valid resource.
-                Game.Economy.Resource deliveryTruckResource = deliveryTruck.m_Resource;
-                if ((deliveryTruck.m_State & Game.Vehicles.DeliveryTruckFlags.Loaded) != 0 &&
+                Resource deliveryTruckResource = deliveryTruck.m_Resource;
+                if ((deliveryTruck.m_State & DeliveryTruckFlags.Loaded) != 0 &&
                     deliveryTruck.m_Amount > 0 &&
-                    deliveryTruckResource != Game.Economy.Resource.NoResource &&
-                    deliveryTruckResource != Game.Economy.Resource.Garbage)
+                    deliveryTruckResource != Resource.NoResource &&
+                    deliveryTruckResource != Resource.Garbage)
                 {
                     // Find active infomode (if any) corresponding to the delivery truck resource.
                     foreach (ActiveInfomode activeInfomode in ActiveInfomodes)
@@ -207,16 +250,16 @@ namespace ResourceLocator
                         if (activeInfomode.resource == deliveryTruckResource)
                         {
                             // Set delivery truck color according to the active infomode.
-                            colors[vehicleIndex] = new Game.Objects.Color(activeInfomode.infomodeIndex, 255);
+                            colors[vehicleIndex] = new Color(activeInfomode.infomodeIndex, 255);
 
                             // If delivery truck has a controller, then set its color too.
                             // Controller is the tractor of a tractor trailer semi truck.
                             // Both tractor and trailer have DeliveryTruck component.
                             // But only the trailer has the resource; the tractor has NoResource.
-                            if (ComponentLookupController.TryGetComponent(vehicleEntity, out Game.Vehicles.Controller controller) &&
+                            if (ComponentLookupController.TryGetComponent(vehicleEntity, out Controller controller) &&
                                 ComponentLookupColor.HasComponent(controller.m_Controller))
                             {
-                                ComponentLookupColor[controller.m_Controller] = new Game.Objects.Color(activeInfomode.infomodeIndex, 255);
+                                ComponentLookupColor[controller.m_Controller] = new Color(activeInfomode.infomodeIndex, 255);
                             }
 
                             // Found the active infomode, stop checking infomodes.
@@ -233,10 +276,10 @@ namespace ResourceLocator
             /// Set vehicle color for a cargo transport.
             /// Cargo transports include cargo trains, cargo ships, and cargo airplanes.
             /// </summary>
-            private void SetVehicleColorCargoTransport(Entity vehicleEntity, int vehicleIndex, ref NativeArray<Game.Objects.Color> colors)
+            private void SetVehicleColorCargoTransport(Entity vehicleEntity, int vehicleIndex, ref NativeArray<Color> colors)
             {
                 // Cargo transport must have a resources buffer with at least 1 resource in it.
-                if (BufferLookupResources.TryGetBuffer(vehicleEntity, out DynamicBuffer<Game.Economy.Resources> resourcesBuffer) &&
+                if (BufferLookupResources.TryGetBuffer(vehicleEntity, out DynamicBuffer<Resources> resourcesBuffer) &&
                     resourcesBuffer.Length > 0)
                 {
                     // Do each active infomode.
@@ -244,8 +287,8 @@ namespace ResourceLocator
                     foreach (ActiveInfomode activeInfomode in ActiveInfomodes)
                     {
                         // Find a resource in the buffer corresponding to the active infomode resource.
-                        Game.Economy.Resource activeInfomodeResource = activeInfomode.resource;
-                        foreach (Game.Economy.Resources bufferResource in resourcesBuffer)
+                        Resource activeInfomodeResource = activeInfomode.resource;
+                        foreach (Resources bufferResource in resourcesBuffer)
                         {
                             if (bufferResource.m_Resource == activeInfomodeResource && bufferResource.m_Amount > 0)
                             {
@@ -253,7 +296,7 @@ namespace ResourceLocator
                                 found = true;
 
                                 // Set cargo transport color according to the active infomode.
-                                colors[vehicleIndex] = new Game.Objects.Color(activeInfomode.infomodeIndex, 255);
+                                colors[vehicleIndex] = new Color(activeInfomode.infomodeIndex, 255);
 
                                 // Stop checking buffer resources.
                                 break;
@@ -268,7 +311,7 @@ namespace ResourceLocator
                     }
 
                     // Save the in transit amount for every resource in the buffer.
-                    foreach (Game.Economy.Resources bufferResource in resourcesBuffer)
+                    foreach (Resources bufferResource in resourcesBuffer)
                     {
                         SaveInTransitAmount(bufferResource.m_Resource, bufferResource.m_Amount);
                     }
@@ -278,17 +321,17 @@ namespace ResourceLocator
             /// <summary>
             /// Save in transit amount.
             /// </summary>
-            private void SaveInTransitAmount(Game.Economy.Resource resource, int amount)
+            private void SaveInTransitAmount(Resource resource, int amount)
             {
                 // Resource must be valid.
                 // Skip zero amounts.
-                if (resource != Game.Economy.Resource.NoResource && amount != 0)
+                if (resource != Resource.NoResource && amount != 0)
                 {
                     // Accumulate in transit amount for this thread and resource.
                     // By having a separate entry for each thread, parallel threads will never access the same inner array at the same time.
-                    NativeArray<int> storageAmountForThread = StorageAmountInTransit[JobsUtility.ThreadIndex];
-                    int resourceIndex = Game.Economy.EconomyUtils.GetResourceIndex(resource);
-                    storageAmountForThread[resourceIndex] = storageAmountForThread[resourceIndex] + amount;
+                    NativeArray<int> storageAmountsForThread = StorageAmountsInTransit[JobsUtility.ThreadIndex];
+                    int resourceIndex = EconomyUtils.GetResourceIndex(resource);
+                    storageAmountsForThread[resourceIndex] = storageAmountsForThread[resourceIndex] + amount;
                 }
             }
         }
@@ -302,55 +345,46 @@ namespace ResourceLocator
         private partial struct UpdateColorsJobMainBuilding : IJobChunk
         {
             // Color component type to update (not ReadOnly).
-            public ComponentTypeHandle<Game.Objects.Color> ComponentTypeHandleColor;
+            public ComponentTypeHandle<Color> ComponentTypeHandleColor;
 
             // Buffer lookups.
-            [ReadOnly] public BufferLookup<Game.Buildings.          Renter                      > BufferLookupRenter;
-            [ReadOnly] public BufferLookup<Game.Economy.            Resources                   > BufferLookupResources;
+            [ReadOnly] public BufferLookup<Renter                       > BufferLookupRenter;
+            [ReadOnly] public BufferLookup<Resources                    > BufferLookupResources;
 
             // Component lookups.
-            [ReadOnly] public ComponentLookup<Game.Prefabs.         BuildingData                > ComponentLookupBuildingData;
-            [ReadOnly] public ComponentLookup<Game.Prefabs.         BuildingPropertyData        > ComponentLookupBuildingPropertyData;
-            [ReadOnly] public ComponentLookup<Game.Companies.       CompanyData                 > ComponentLookupCompanyData;
-            [ReadOnly] public ComponentLookup<Game.Companies.       ExtractorCompany            > ComponentLookupExtractorCompany;
-            [ReadOnly] public ComponentLookup<Game.Prefabs.         IndustrialProcessData       > ComponentLookupIndustrialProcessData;
-            [ReadOnly] public ComponentLookup<Game.Prefabs.         PrefabRef                   > ComponentLookupPrefabRef;
-            [ReadOnly] public ComponentLookup<Game.Companies.       ProcessingCompany           > ComponentLookupProcessingCompany;
-            [ReadOnly] public ComponentLookup<Game.Companies.       ServiceAvailable            > ComponentLookupServiceAvailable;
-            [ReadOnly] public ComponentLookup<Game.Companies.       StorageCompany              > ComponentLookupStorageCompany;
-            [ReadOnly] public ComponentLookup<Game.Prefabs.         StorageCompanyData          > ComponentLookupStorageCompanyData;
+            [ReadOnly] public ComponentLookup<BuildingData              > ComponentLookupBuildingData;
+            [ReadOnly] public ComponentLookup<BuildingPropertyData      > ComponentLookupBuildingPropertyData;
+            [ReadOnly] public ComponentLookup<CompanyData               > ComponentLookupCompanyData;
+            [ReadOnly] public ComponentLookup<ExtractorCompany          > ComponentLookupExtractorCompany;
+            [ReadOnly] public ComponentLookup<IndustrialProcessData     > ComponentLookupIndustrialProcessData;
+            [ReadOnly] public ComponentLookup<PrefabRef                 > ComponentLookupPrefabRef;
+            [ReadOnly] public ComponentLookup<ProcessingCompany         > ComponentLookupProcessingCompany;
+            [ReadOnly] public ComponentLookup<ServiceAvailable          > ComponentLookupServiceAvailable;
+            [ReadOnly] public ComponentLookup<StorageCompany            > ComponentLookupStorageCompany;
+            [ReadOnly] public ComponentLookup<StorageCompanyData        > ComponentLookupStorageCompanyData;
 
             // Component type handles for buildings.
-            [ReadOnly] public ComponentTypeHandle<Game.Buildings.   CargoTransportStation       > ComponentTypeHandleCargoTransportStation;
-            [ReadOnly] public ComponentTypeHandle<Game.Buildings.   CommercialProperty          > ComponentTypeHandleCommercialProperty;
-            [ReadOnly] public ComponentTypeHandle<Game.Buildings.   ElectricityProducer         > ComponentTypeHandleElectricityProducer;
-            [ReadOnly] public ComponentTypeHandle<Game.Buildings.   EmergencyShelter            > ComponentTypeHandleEmergencyShelter;
-            [ReadOnly] public ComponentTypeHandle<Game.Buildings.   GarbageFacility             > ComponentTypeHandleGarbageFacility;
-            [ReadOnly] public ComponentTypeHandle<Game.Buildings.   Hospital                    > ComponentTypeHandleHospital;
-            [ReadOnly] public ComponentTypeHandle<Game.Buildings.   IndustrialProperty          > ComponentTypeHandleIndustrialProperty;
-            [ReadOnly] public ComponentTypeHandle<Game.Buildings.   ResourceProducer            > ComponentTypeHandleResourceProducer;
+            [ReadOnly] public ComponentTypeHandle<CargoTransportStation > ComponentTypeHandleCargoTransportStation;
+            [ReadOnly] public ComponentTypeHandle<CommercialProperty    > ComponentTypeHandleCommercialProperty;
+            [ReadOnly] public ComponentTypeHandle<ElectricityProducer   > ComponentTypeHandleElectricityProducer;
+            [ReadOnly] public ComponentTypeHandle<EmergencyShelter      > ComponentTypeHandleEmergencyShelter;
+            [ReadOnly] public ComponentTypeHandle<GarbageFacility       > ComponentTypeHandleGarbageFacility;
+            [ReadOnly] public ComponentTypeHandle<Hospital              > ComponentTypeHandleHospital;
+            [ReadOnly] public ComponentTypeHandle<IndustrialProperty    > ComponentTypeHandleIndustrialProperty;
+            [ReadOnly] public ComponentTypeHandle<ResourceProducer      > ComponentTypeHandleResourceProducer;
 
             // Component type handles for miscellaneous.
-            [ReadOnly] public ComponentTypeHandle<Game.Areas.       CurrentDistrict             > ComponentTypeHandleCurrentDistrict;
-            [ReadOnly] public ComponentTypeHandle<Game.Common.      Destroyed                   > ComponentTypeHandleDestroyed;
-            [ReadOnly] public ComponentTypeHandle<Game.Objects.     OutsideConnection           > ComponentTypeHandleOutsideConnection;
-            [ReadOnly] public ComponentTypeHandle<Game.Prefabs.     PrefabRef                   > ComponentTypeHandlePrefabRef;
-            [ReadOnly] public ComponentTypeHandle<Game.Objects.     UnderConstruction           > ComponentTypeHandleUnderConstruction;
+            [ReadOnly] public ComponentTypeHandle<CurrentDistrict       > ComponentTypeHandleCurrentDistrict;
+            [ReadOnly] public ComponentTypeHandle<Destroyed             > ComponentTypeHandleDestroyed;
+            [ReadOnly] public ComponentTypeHandle<OutsideConnection     > ComponentTypeHandleOutsideConnection;
+            [ReadOnly] public ComponentTypeHandle<PrefabRef             > ComponentTypeHandlePrefabRef;
+            [ReadOnly] public ComponentTypeHandle<UnderConstruction     > ComponentTypeHandleUnderConstruction;
 
             // Entity type handle.
             [ReadOnly] public EntityTypeHandle EntityTypeHandle;
 
             // Active infomodes.
             [ReadOnly] public NativeArray<ActiveInfomode> ActiveInfomodes;
-
-            // Nested arrays to return storage amounts to the BuildingColorSystem.
-            // The outer array is one for each possible thread.
-            // The inner array is one for each resource.
-            // Even though the outer array is read only, entries in the inner array can still be updated.
-            [ReadOnly] public NativeArray<NativeArray<int>> StorageAmountRequires;
-            [ReadOnly] public NativeArray<NativeArray<int>> StorageAmountProduces;
-            [ReadOnly] public NativeArray<NativeArray<int>> StorageAmountSells;
-            [ReadOnly] public NativeArray<NativeArray<int>> StorageAmountStores;
 
             // Mod settings used in the job.
             [ReadOnly] public bool IncludeRecyclingCenter;
@@ -367,13 +401,27 @@ namespace ResourceLocator
             // Display option.
             [ReadOnly] public DisplayOption DisplayOption;
 
+            // Nested arrays to return storage amounts and company counts to OnUpdate.
+            // The outer array is one for each possible thread.
+            // The inner array is one for each resource.
+            // Even though the outer array is read only, entries in the inner array can still be updated.
+            [ReadOnly] public NativeArray<NativeArray<int>> StorageAmountsRequires;
+            [ReadOnly] public NativeArray<NativeArray<int>> StorageAmountsProduces;
+            [ReadOnly] public NativeArray<NativeArray<int>> StorageAmountsSells;
+            [ReadOnly] public NativeArray<NativeArray<int>> StorageAmountsStores;
+
+            [ReadOnly] public NativeArray<NativeArray<int>> CompanyCountsRequires;
+            [ReadOnly] public NativeArray<NativeArray<int>> CompanyCountsProduces;
+            [ReadOnly] public NativeArray<NativeArray<int>> CompanyCountsSells;
+            [ReadOnly] public NativeArray<NativeArray<int>> CompanyCountsStores;
+
             /// <summary>
             /// Job execution.
             /// </summary>
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
                 // Get colors to set.
-                NativeArray<Game.Objects.Color> colors = chunk.GetNativeArray(ref ComponentTypeHandleColor);
+                NativeArray<Color> colors = chunk.GetNativeArray(ref ComponentTypeHandleColor);
 
                 // Get whether or not the property type is valid for this mod.
                 // This is used below to quickly skip the lengthy building color logic for property types this mod does not care about.
@@ -387,11 +435,11 @@ namespace ResourceLocator
                     chunk.Has(ref ComponentTypeHandleIndustrialProperty     );      // For both industrial and office.
                 
                 // Get arrays from the chunk.
-                NativeArray<Entity                        > entities           = chunk.GetNativeArray(EntityTypeHandle);
-                NativeArray<Game.Prefabs.PrefabRef        > prefabRefs         = chunk.GetNativeArray(ref ComponentTypeHandlePrefabRef);
-                NativeArray<Game.Areas.CurrentDistrict    > districts          = chunk.GetNativeArray(ref ComponentTypeHandleCurrentDistrict);
-                NativeArray<Game.Common.Destroyed         > destroyeds         = chunk.GetNativeArray(ref ComponentTypeHandleDestroyed);
-                NativeArray<Game.Objects.UnderConstruction> underConstructions = chunk.GetNativeArray(ref ComponentTypeHandleUnderConstruction);
+                NativeArray<Entity           > entities           = chunk.GetNativeArray(EntityTypeHandle);
+                NativeArray<PrefabRef        > prefabRefs         = chunk.GetNativeArray(ref ComponentTypeHandlePrefabRef);
+                NativeArray<CurrentDistrict  > currentDistricts   = chunk.GetNativeArray(ref ComponentTypeHandleCurrentDistrict);
+                NativeArray<Destroyed        > destroyeds         = chunk.GetNativeArray(ref ComponentTypeHandleDestroyed);
+                NativeArray<UnderConstruction> underConstructions = chunk.GetNativeArray(ref ComponentTypeHandleUnderConstruction);
 
                 // Do each entity (i.e. building).
                 for (int i = 0; i < entities.Length; i++)
@@ -400,10 +448,11 @@ namespace ResourceLocator
                     if (propertyTypeIsValid)
                     {
                         // Building must be in selected district.
-                        if (SelectedDistrictIsEntireCity || districts[i].m_District == SelectedDistrict)
+                        if (SelectedDistrictIsEntireCity ||
+                            (currentDistricts.IsCreated && currentDistricts.Length > 0 && currentDistricts[i].m_District == SelectedDistrict))
                         {
                             // Get building's company, if any.
-                            if (Game.UI.InGame.CompanyUIUtils.HasCompany(
+                            if (CompanyUIUtils.HasCompany(
                                 entities[i],
                                 prefabRefs[i].m_Prefab,
                                 ref BufferLookupRenter,
@@ -426,13 +475,13 @@ namespace ResourceLocator
 
                     // Check if should set SubColor flag on the color.
                     // Logic adapted from Game.Rendering.ObjectColorSystem.CheckColors().
-                    if ((ComponentLookupBuildingData[prefabRefs[i].m_Prefab].m_Flags & Game.Prefabs.BuildingFlags.ColorizeLot) != 0 ||
-                        (CollectionUtils.TryGet(destroyeds, i, out Game.Common.Destroyed destroyed) && destroyed.m_Cleared >= 0f) ||
-                        (CollectionUtils.TryGet(underConstructions, i, out Game.Objects.UnderConstruction underConstruction) && underConstruction.m_NewPrefab == Entity.Null))
+                    if ((ComponentLookupBuildingData[prefabRefs[i].m_Prefab].m_Flags & BuildingFlags.ColorizeLot) != 0 ||
+                        (CollectionUtils.TryGet(destroyeds, i, out Destroyed destroyed) && destroyed.m_Cleared >= 0f) ||
+                        (CollectionUtils.TryGet(underConstructions, i, out UnderConstruction underConstruction) && underConstruction.m_NewPrefab == Entity.Null))
                     {
                         // Set SubColor flag on the color.
                         // Not sure what the SubColor flag does.
-                        Game.Objects.Color color = colors[i];
+                        Color color = colors[i];
                         color.m_SubColor = true;
                         colors[i] = color;
                     }
@@ -442,37 +491,36 @@ namespace ResourceLocator
             /// <summary>
             /// Set building color for a company building.
             /// </summary>
-            private void SetBuildingColorCompany(Entity companyEntity, ref NativeArray<Game.Objects.Color> colors, int colorsIndex)
+            private void SetBuildingColorCompany(Entity companyEntity, ref NativeArray<Color> colors, int colorsIndex)
             {
                 // Logic adapated from Game.UI.InGame.CompanySection.OnProcess().
 
                 // Company must have a resources buffer and industrial process data.
-                if (BufferLookupResources.TryGetBuffer(companyEntity, out DynamicBuffer<Game.Economy.Resources> bufferResources) &&
-                    ComponentLookupPrefabRef.TryGetComponent(companyEntity, out Game.Prefabs.PrefabRef companyPrefabRef) &&
-                    ComponentLookupIndustrialProcessData.TryGetComponent(companyPrefabRef.m_Prefab, out Game.Prefabs.IndustrialProcessData companyIndustrialProcessData))
+                if (BufferLookupResources.TryGetBuffer(companyEntity, out DynamicBuffer<Resources> bufferResources) &&
+                    ComponentLookupPrefabRef.TryGetComponent(companyEntity, out PrefabRef companyPrefabRef) &&
+                    ComponentLookupIndustrialProcessData.TryGetComponent(companyPrefabRef.m_Prefab, out IndustrialProcessData companyIndustrialProcessData))
                 {
                     // Resources for requires, produces, sells, and stores.
-                    Game.Economy.Resource resourceRequires1 = Game.Economy.Resource.NoResource;
-                    Game.Economy.Resource resourceRequires2 = Game.Economy.Resource.NoResource;
-                    Game.Economy.Resource resourceProduces  = Game.Economy.Resource.NoResource;
-                    Game.Economy.Resource resourceSells     = Game.Economy.Resource.NoResource;
-                    Game.Economy.Resource resourceStores    = Game.Economy.Resource.NoResource;
+                    Resource resourceRequires1 = Resource.NoResource;
+                    Resource resourceRequires2 = Resource.NoResource;
+                    Resource resourceProduces  = Resource.NoResource;
+                    Resource resourceSells     = Resource.NoResource;
+                    Resource resourceStores    = Resource.NoResource;
 
                     // Get input and output resources.
-                    Game.Economy.Resource resourceInput1 = companyIndustrialProcessData.m_Input1.m_Resource;
-                    Game.Economy.Resource resourceInput2 = companyIndustrialProcessData.m_Input2.m_Resource;
-                    Game.Economy.Resource resourceOutput = companyIndustrialProcessData.m_Output.m_Resource;
+                    Resource resourceInput1 = companyIndustrialProcessData.m_Input1.m_Resource;
+                    Resource resourceInput2 = companyIndustrialProcessData.m_Input2.m_Resource;
+                    Resource resourceOutput = companyIndustrialProcessData.m_Output.m_Resource;
                             
                     // A company with service available might require resources but always sells.
-                    bool serviceCompany = ComponentLookupServiceAvailable.HasComponent(companyEntity);
-                    if (serviceCompany)
+                    if (ComponentLookupServiceAvailable.HasComponent(companyEntity))
                     {
                         // Check if building requires input 1 or 2 resources.
-                        if (resourceInput1 != Game.Economy.Resource.NoResource && resourceInput1 != resourceOutput)
+                        if (resourceInput1 != Resource.NoResource && resourceInput1 != resourceOutput)
                         {
                             resourceRequires1 = resourceInput1;
                         }
-                        if (resourceInput2 != Game.Economy.Resource.NoResource && resourceInput2 != resourceOutput && resourceInput2 != resourceInput1)
+                        if (resourceInput2 != Resource.NoResource && resourceInput2 != resourceOutput && resourceInput2 != resourceInput1)
                         {
                             resourceRequires2 = resourceInput2;
                         }
@@ -503,7 +551,7 @@ namespace ResourceLocator
                     else if (ComponentLookupStorageCompany.HasComponent(companyEntity))
                     {
                         // Get the storage company data.
-                        if (ComponentLookupStorageCompanyData.TryGetComponent(companyPrefabRef.m_Prefab, out Game.Prefabs.StorageCompanyData storageCompanyData))
+                        if (ComponentLookupStorageCompanyData.TryGetComponent(companyPrefabRef.m_Prefab, out StorageCompanyData storageCompanyData))
                         {
                             // Building stores the stored resource.
                             resourceStores = storageCompanyData.m_StoredResources;
@@ -519,22 +567,29 @@ namespace ResourceLocator
                         case DisplayOption.Stores:   SetBuildingColorForActiveInfomode(ref colors, colorsIndex, resourceStores                      ); break;
                     }
 
-                    // Save storage amounts for each resource in the buffer.
-                    foreach (Game.Economy.Resources resources in bufferResources)
+                    // Add storage amounts for each resource in the buffer.
+                    foreach (Resources resources in bufferResources)
                     {
-                        if (resources.m_Resource == resourceRequires1) { SaveStorageAmount(ref StorageAmountRequires, resourceRequires1, resources.m_Amount); }
-                        if (resources.m_Resource == resourceRequires2) { SaveStorageAmount(ref StorageAmountRequires, resourceRequires2, resources.m_Amount); }
-                        if (resources.m_Resource == resourceProduces ) { SaveStorageAmount(ref StorageAmountProduces, resourceProduces,  resources.m_Amount); }
-                        if (resources.m_Resource == resourceSells    ) { SaveStorageAmount(ref StorageAmountSells,    resourceSells,     resources.m_Amount); }
-                        if (resources.m_Resource == resourceStores   ) { SaveStorageAmount(ref StorageAmountStores,   resourceStores,    resources.m_Amount); }
+                        if (resources.m_Resource == resourceRequires1) { AddStorageAmount(in StorageAmountsRequires, resourceRequires1, resources.m_Amount); }
+                        if (resources.m_Resource == resourceRequires2) { AddStorageAmount(in StorageAmountsRequires, resourceRequires2, resources.m_Amount); }
+                        if (resources.m_Resource == resourceProduces ) { AddStorageAmount(in StorageAmountsProduces, resourceProduces,  resources.m_Amount); }
+                        if (resources.m_Resource == resourceSells    ) { AddStorageAmount(in StorageAmountsSells,    resourceSells,     resources.m_Amount); }
+                        if (resources.m_Resource == resourceStores   ) { AddStorageAmount(in StorageAmountsStores,   resourceStores,    resources.m_Amount); }
                     }
+
+                    // Increment company counts.
+                    IncrementCompanyCount(in CompanyCountsRequires, resourceRequires1);
+                    IncrementCompanyCount(in CompanyCountsRequires, resourceRequires2);
+                    IncrementCompanyCount(in CompanyCountsProduces, resourceProduces);
+                    IncrementCompanyCount(in CompanyCountsSells,    resourceSells);
+                    IncrementCompanyCount(in CompanyCountsStores,   resourceStores);
                 }
             }
 
             /// <summary>
             /// Set building color for special case buildings.
             /// </summary>
-            private void SetBuildingColorSpecialCase(in ArchetypeChunk chunk, Entity entity, ref NativeArray<Game.Objects.Color> colors, int colorsIndex)
+            private void SetBuildingColorSpecialCase(in ArchetypeChunk chunk, Entity entity, ref NativeArray<Color> colors, int colorsIndex)
             {
                 // Building must not be an outside connection.
                 if (chunk.Has(ref ComponentTypeHandleOutsideConnection))
@@ -543,7 +598,7 @@ namespace ResourceLocator
                 }
 
                 // Building must have a resources buffer that can be checked.
-                if (!BufferLookupResources.TryGetBuffer(entity, out DynamicBuffer<Game.Economy.Resources> bufferResources))
+                if (!BufferLookupResources.TryGetBuffer(entity, out DynamicBuffer<Resources> bufferResources))
                 {
                     return;
                 }
@@ -556,14 +611,14 @@ namespace ResourceLocator
                     if (IncludeRecyclingCenter)
                     {
                         // Do each resource in the buffer.
-                        foreach (Game.Economy.Resources bufferResource in bufferResources)
+                        foreach (Resources bufferResource in bufferResources)
                         {
-                            // Save storage amount for Produces.
-                            // This will save resource amounts for resources this mod does not care about (e.g. garbage).
-                            // These unneeded saved resource amounts will simply be ignored in later logic.
-                            // It is faster to save and ignore these few unneeded amounts than
-                            // to determine which few unneeded resources should not be saved in the first place.
-                            SaveStorageAmount(ref StorageAmountProduces, bufferResource.m_Resource, bufferResource.m_Amount);
+                            // Add storage amount for Produces.
+                            // This will add resource amounts for resources this mod does not care about (e.g. garbage).
+                            // These unneeded added resource amounts will simply be ignored in later logic.
+                            // It is faster to add and ignore these few unneeded amounts than
+                            // to determine which few unneeded resources should not be added in the first place.
+                            AddStorageAmount(in StorageAmountsProduces, bufferResource.m_Resource, bufferResource.m_Amount);
                         }
 
                         // Set building color only for Produces display option.
@@ -577,8 +632,8 @@ namespace ResourceLocator
                             foreach (ActiveInfomode activeInfomode in ActiveInfomodes)
                             {
                                 // Do each resource in the buffer.
-                                Game.Economy.Resource activeInfomodeResource = activeInfomode.resource;
-                                foreach (Game.Economy.Resources bufferResource in bufferResources)
+                                Resource activeInfomodeResource = activeInfomode.resource;
+                                foreach (Resources bufferResource in bufferResources)
                                 {
                                     // Check if resource from buffer is resource for this active infomode.
                                     if (bufferResource.m_Resource == activeInfomodeResource)
@@ -605,8 +660,8 @@ namespace ResourceLocator
                 if (chunk.Has(ref ComponentTypeHandleElectricityProducer))
                 {
                     // Check if coal and gas power plant is included.
-                    if (IncludeCoalPowerPlant) { SetBuildingColorForStores(ref colors, colorsIndex, bufferResources, Game.Economy.Resource.Coal          ); }
-                    if (IncludeGasPowerPlant ) { SetBuildingColorForStores(ref colors, colorsIndex, bufferResources, Game.Economy.Resource.Petrochemicals); }
+                    if (IncludeCoalPowerPlant) { SetBuildingColorForStores(ref colors, colorsIndex, bufferResources, Resource.Coal          ); }
+                    if (IncludeGasPowerPlant ) { SetBuildingColorForStores(ref colors, colorsIndex, bufferResources, Resource.Petrochemicals); }
                     return;
                 }
 
@@ -614,7 +669,7 @@ namespace ResourceLocator
                 if (chunk.Has(ref ComponentTypeHandleHospital))
                 {
                     // Check if medical facility is included.
-                    if (IncludeMedicalFacility) { SetBuildingColorForStores(ref colors, colorsIndex, bufferResources, Game.Economy.Resource.Pharmaceuticals); }
+                    if (IncludeMedicalFacility) { SetBuildingColorForStores(ref colors, colorsIndex, bufferResources, Resource.Pharmaceuticals); }
                     return;
                 }
 
@@ -622,7 +677,7 @@ namespace ResourceLocator
                 if (chunk.Has(ref ComponentTypeHandleEmergencyShelter))
                 {
                     // Check if emergency shelter is included.
-                    if (IncludeEmeregencyShelter) { SetBuildingColorForStores(ref colors, colorsIndex, bufferResources, Game.Economy.Resource.Food); }
+                    if (IncludeEmeregencyShelter) { SetBuildingColorForStores(ref colors, colorsIndex, bufferResources, Resource.Food); }
                     return;
                 }
 
@@ -633,14 +688,14 @@ namespace ResourceLocator
                     if (IncludeCargoStation)
                     {
                         // Do each resource in the buffer.
-                        foreach (Game.Economy.Resources bufferResource in bufferResources)
+                        foreach (Resources bufferResource in bufferResources)
                         {
-                            // Save storage amount for Stores.
+                            // Add storage amount for Stores.
                             // This will save resource amounts for resources this mod does not care about (e.g. mail).
-                            // These unneeded saved resource amounts will simply be ignored in later logic.
-                            // It is faster to save and ignore these few unneeded amounts than
-                            // to determine which few unneeded resources should not be saved in the first place.
-                            SaveStorageAmount(ref StorageAmountStores, bufferResource.m_Resource, bufferResource.m_Amount);
+                            // These unneeded added resource amounts will simply be ignored in later logic.
+                            // It is faster to add and ignore these few unneeded amounts than
+                            // to determine which few unneeded resources should not be added in the first place.
+                            AddStorageAmount(in StorageAmountsStores, bufferResource.m_Resource, bufferResource.m_Amount);
                         }
 
                         // Set building color only for Stores display option.
@@ -653,8 +708,8 @@ namespace ResourceLocator
                             foreach (ActiveInfomode activeInfomode in ActiveInfomodes)
                             {
                                 // Do each resource in the buffer.
-                                Game.Economy.Resource activeInfomodeResource = activeInfomode.resource;
-                                foreach (Game.Economy.Resources bufferResource in bufferResources)
+                                Resource activeInfomodeResource = activeInfomode.resource;
+                                foreach (Resources bufferResource in bufferResources)
                                 {
                                     // Check if resource from buffer is resource for this active infomode.
                                     if (bufferResource.m_Resource == activeInfomodeResource && bufferResource.m_Amount > 0)
@@ -680,10 +735,10 @@ namespace ResourceLocator
             /// Set building color if the infomode is active corresponding to the resources to check.
             /// </summary>
             private void SetBuildingColorForActiveInfomode(
-                ref NativeArray<Game.Objects.Color> colors,
+                ref NativeArray<Color> colors,
                 int colorsIndex,
-                Game.Economy.Resource resourceToCheckForActive1,
-                Game.Economy.Resource resourceToCheckForActive2 = Game.Economy.Resource.NoResource)
+                Resource resourceToCheckForActive1,
+                Resource resourceToCheckForActive2 = Resource.NoResource)
             {
                 // Do each active infomode.
                 foreach (ActiveInfomode activeInfomode in ActiveInfomodes)
@@ -706,14 +761,14 @@ namespace ResourceLocator
             /// </summary>
             private void SetBuildingColorForStores
             (
-                ref NativeArray<Game.Objects.Color> colors,
+                ref NativeArray<Color> colors,
                 int colorsIndex,
-                DynamicBuffer<Game.Economy.Resources> bufferResources,
-                Game.Economy.Resource resourceToCheck
+                DynamicBuffer<Resources> bufferResources,
+                Resource resourceToCheck
             )
             {
                 // Do each resource in the buffer.
-                foreach (Game.Economy.Resources bufferResource in bufferResources)
+                foreach (Resources bufferResource in bufferResources)
                 {
                     // Check if buffer resource is resource to check.
                     if (bufferResource.m_Resource == resourceToCheck)
@@ -725,8 +780,8 @@ namespace ResourceLocator
                             SetBuildingColorForActiveInfomode(ref colors, colorsIndex, resourceToCheck);
                         }
 
-                        // Save storage amount for Stores.
-                        SaveStorageAmount(ref StorageAmountStores, resourceToCheck, bufferResource.m_Amount);
+                        // Add storage amount for Stores.
+                        AddStorageAmount(in StorageAmountsStores, resourceToCheck, bufferResource.m_Amount);
 
                         // Stop checking.
                         break;
@@ -737,68 +792,46 @@ namespace ResourceLocator
             /// <summary>
             /// Set building color according to infomode index.
             /// </summary>
-            private void SetBuildingColor(ref NativeArray<Game.Objects.Color> colors, int colorsIndex, byte infomodeIndex)
+            private void SetBuildingColor(ref NativeArray<Color> colors, int colorsIndex, byte infomodeIndex)
             {
                 // Much of the logic in this job is for this right here.
-                colors[colorsIndex] = new Game.Objects.Color(infomodeIndex, (byte)255);
+                // Building's SubColor remains unchanged.
+                Color color = colors[colorsIndex];
+                color.m_Index = infomodeIndex;
+                color.m_Value = (byte)255;
+                colors[colorsIndex] = color;
             }
 
             /// <summary>
-            /// Save a storage amount.
+            /// Add the storage amount for a resource.
             /// </summary>
-            private void SaveStorageAmount(ref NativeArray<NativeArray<int>> storageAmount, Game.Economy.Resource resource, int amount)
+            private void AddStorageAmount(in NativeArray<NativeArray<int>> storageAmounts, Resource resource, int amount)
             {
                 // Resource must be valid.
                 // Amount must be non-zero.
-                if (resource != Game.Economy.Resource.NoResource && amount != 0)
+                if (resource != Resource.NoResource && amount != 0)
                 {
-                    // Accumulate storage amount for this thread and resource.
+                    // Add storage amount for this thread and resource.
                     // By having a separate entry for each thread, parallel threads will never access the same inner array at the same time.
-                    NativeArray<int> storageAmountForThread = storageAmount[JobsUtility.ThreadIndex];
-                    int resourceIndex = Game.Economy.EconomyUtils.GetResourceIndex(resource);
-                    storageAmountForThread[resourceIndex] = storageAmountForThread[resourceIndex] + amount;
+                    NativeArray<int> storageAmountsForThread = storageAmounts[JobsUtility.ThreadIndex];
+                    int resourceIndex = EconomyUtils.GetResourceIndex(resource);
+                    storageAmountsForThread[resourceIndex] = storageAmountsForThread[resourceIndex] + amount;
                 }
             }
-        }
-
-
-        /// <summary>
-        /// Job to set the color of each middle building to the color of its owner.
-        /// Middle buildings include sub buildings (i.e. building upgrades placed around the perimeter of the main building).
-        /// Logic is adapted from Game.Rendering.ObjectColorSystem.UpdateMiddleObjectColorsJob except to handle only buildings and variables are renamed to improve readability.
-        /// </summary>
-        [BurstCompile]
-        private struct UpdateColorsJobMiddleBuilding : IJobChunk
-        {
-            // Color component lookup to update.
-            [NativeDisableParallelForRestriction] public ComponentLookup<Game.Objects.Color> ComponentLookupColor;
-
-            // Component type handles.
-            [ReadOnly] public ComponentTypeHandle<Game.Common.Owner> ComponentTypeHandleOwner;
-
-            // Entity type handle.
-            [ReadOnly] public EntityTypeHandle EntityTypeHandle;
 
             /// <summary>
-            /// Job execution.
+            /// Increment the company count for a resource.
             /// </summary>
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            private void IncrementCompanyCount(in NativeArray<NativeArray<int>> companyCounts, Resource resource)
             {
-                // Do each entity.
-                NativeArray<Game.Common.Owner> owners   = chunk.GetNativeArray(ref ComponentTypeHandleOwner);
-                NativeArray<Entity           > entities = chunk.GetNativeArray(EntityTypeHandle);
-                for (int i = 0; i < entities.Length; i++)
+                // Resource must be valid.
+                if (resource != Resource.NoResource)
                 {
-                    // Get the color of the owner entity.
-                    if (ComponentLookupColor.TryGetComponent(owners[i].m_Owner, out Game.Objects.Color ownerColor))
-                    {
-                        // Set color of this entity to color of owner entity.
-                        Entity entity = entities[i];
-                        Game.Objects.Color color = ComponentLookupColor[entity];
-                        color.m_Index = ownerColor.m_Index;
-                        color.m_Value = ownerColor.m_Value;
-                        ComponentLookupColor[entity] = color;
-                    }
+                    // Increment company count for this thread and resource.
+                    // By having a separate entry for each thread, parallel threads will never access the same inner array at the same time.
+                    NativeArray<int> companyCountsForThread = companyCounts[JobsUtility.ThreadIndex];
+                    int resourceIndex = EconomyUtils.GetResourceIndex(resource);
+                    companyCountsForThread[resourceIndex] = companyCountsForThread[resourceIndex] + 1;
                 }
             }
         }
@@ -812,10 +845,10 @@ namespace ResourceLocator
         private struct UpdateColorsJobAttachmentBuilding : IJobChunk
         {
             // Color component lookup to update.
-            [NativeDisableParallelForRestriction] public ComponentLookup<Game.Objects.Color> ComponentLookupColor;
+            [NativeDisableParallelForRestriction] public ComponentLookup<Color> ComponentLookupColor;
 
             // Component type handles.
-            [ReadOnly] public ComponentTypeHandle<Game.Objects.Attachment> ComponentTypeHandleAttachment;
+            [ReadOnly] public ComponentTypeHandle<Attachment> ComponentTypeHandleAttachment;
 
             // Entity type handle.
             [ReadOnly] public EntityTypeHandle EntityTypeHandle;
@@ -826,20 +859,158 @@ namespace ResourceLocator
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
                 // Do each attachment entity.
-                NativeArray<Game.Objects.Attachment> attachments = chunk.GetNativeArray(ref ComponentTypeHandleAttachment);
-                NativeArray<Entity> entities = chunk.GetNativeArray(EntityTypeHandle);
+                NativeArray<Attachment> attachments = chunk.GetNativeArray(ref ComponentTypeHandleAttachment);
+                NativeArray<Entity    > entities    = chunk.GetNativeArray(EntityTypeHandle);
                 for (int i = 0; i < entities.Length; i++)
                 {
                     // Get the color of the attached entity.
-                    if (ComponentLookupColor.TryGetComponent(attachments[i].m_Attached, out Game.Objects.Color attachedColor))
+                    if (ComponentLookupColor.TryGetComponent(attachments[i].m_Attached, out Color attachedColor))
                     {
                         // Set color of this attachment entity to the color of the attached entity.
                         Entity entity = entities[i];
-                        Game.Objects.Color color = ComponentLookupColor[entity];
+                        Color color = ComponentLookupColor[entity];
                         color.m_Index = attachedColor.m_Index;
                         color.m_Value = attachedColor.m_Value;
                         ComponentLookupColor[entity] = color;
                     }
+                }
+            }
+        }
+
+
+        /// <summary>
+        /// Job to set the color of each middle building to the color of its owner.
+        /// Middle buildings include sub buildings (i.e. building upgrades placed around the perimeter of the main building).
+        /// Logic is adapted from Game.Rendering.ObjectColorSystem.UpdateMiddleObjectColorsJob except:
+        ///     Handle only buildings.
+        ///     Handle port middle buildings specially.
+        ///     Variables are renamed to improve readability.
+        /// </summary>
+        [BurstCompile]
+        private struct UpdateColorsJobMiddleBuilding : IJobChunk
+        {
+            // Color component lookup to update.
+            [NativeDisableParallelForRestriction] public ComponentLookup<Color> ComponentLookupColor;
+
+            // Component lookups.
+            [ReadOnly] public ComponentLookup<BuildingData          > ComponentLookupBuildingData;
+            [ReadOnly] public ComponentLookup<GateData              > ComponentLookupGateData;
+            [ReadOnly] public ComponentLookup<PrefabRef             > ComponentLookupPrefabRef;
+            [ReadOnly] public ComponentLookup<StorageCompanyData    > ComponentLookupStorageCompanyData;
+
+            // Component type handles.
+            [ReadOnly] public ComponentTypeHandle<Owner             > ComponentTypeHandleOwner;
+            [ReadOnly] public ComponentTypeHandle<PrefabRef         > ComponentTypeHandlePrefabRef;
+
+            // Entity type handle.
+            [ReadOnly] public EntityTypeHandle EntityTypeHandle;
+
+            // Options.
+            [ReadOnly] public DisplayOption DisplayOption;
+            [ReadOnly] public bool IncludeCargoStation;
+
+            /// <summary>
+            /// Job execution.
+            /// </summary>
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            {
+                // Do each entity.
+                NativeArray<Owner    > owners     = chunk.GetNativeArray(ref ComponentTypeHandleOwner);
+                NativeArray<PrefabRef> prefabRefs = chunk.GetNativeArray(ref ComponentTypeHandlePrefabRef);
+                NativeArray<Entity> entities = chunk.GetNativeArray(EntityTypeHandle);
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    // Get the entity and owner for this building.
+                    Entity entity = entities[i];
+                    Entity ownerEntity = owners[i].m_Owner;
+
+                    // Check for port middle building.
+                    // All port middle buildings have an Owner that is the main port gate building.
+                    // A main port gate building's prefab has the GateData component.
+                    if (ComponentLookupPrefabRef.TryGetComponent(ownerEntity, out PrefabRef ownerPrefabRef) &&
+                        ComponentLookupGateData.HasComponent(ownerPrefabRef.m_Prefab))
+                    {
+                        // This is a port middle building.
+                        // A port middle building color is set only for the Stores display option
+                        // and only if the Include Cargo Station option is turned on.
+                        // For all other cases the building remains default color.
+                        if (DisplayOption == DisplayOption.Stores && IncludeCargoStation)
+                        {
+                            SetPortBuildingColor(entity, prefabRefs[i].m_Prefab, ownerEntity);
+                        }
+                    }
+                    else
+                    {
+                        // This is not a port middle building.
+                        // Set this building color same as the owner building.
+                        SetBuildingColorToOwnerColor(entity, ownerEntity);
+                    }
+                }
+            }
+
+            /// <summary>
+            /// Set color for a port middle building.
+            /// </summary>
+            private void SetPortBuildingColor(Entity entity, Entity prefab, Entity ownerEntity)
+            {
+                // Port middle buildings are the port buildings placed in the port's area and include:
+                //      Auxiliary Port Gate.
+                //      Employee Canteen, Port Security, Emergency Response.
+                //      Container Crane.
+                //      Passenger Terminal.
+                //      Intermodal Train Terminal.
+                //      Container Yard, Cargo Warehouse, Tank Farm, Bulk Storage Yard (collectively "storage").
+
+                // Check for auxiliary port gate building.
+                // An auxiliary port gate building's prefab has GateData component.
+                if (ComponentLookupGateData.HasComponent(prefab))
+                {
+                    // Set auxiliary port gate building color same as the main port gate building.
+                    SetBuildingColorToOwnerColor(entity, ownerEntity);
+                    return;
+                }
+
+                // Check for port storage building.
+                // All port storage buildings have a prefab with StorageCompanyData that defines stored resources.
+                // Note that the Container Crane's prefab has StorageCompanyData but does not define stored resources.
+                if (ComponentLookupStorageCompanyData.TryGetComponent(prefab, out StorageCompanyData storageCompanyData) &&
+                    storageCompanyData.m_StoredResources != Resource.NoResource)
+                {
+                    // Set port storage building color same as the main port gate building.
+                    SetBuildingColorToOwnerColor(entity, ownerEntity);
+
+                    // Determine whether or not this building's lot should be colorized.
+                    // This is specified in Color.m_SubColor.
+                    // But for unknown reasons, the Bulk Storage Yards start with m_SubColor = false
+                    // when the Bulk Storage Yards should have m_SubColor = true;
+                    // So need to set m_SubColor here according to the building prefab's ColorizeLot flag.
+                    // For simplicity, set SubColor for all port storage buildings, not just Bulk Storage Yards.
+                    Color color = ComponentLookupColor[entity];
+                    color.m_SubColor =
+                        ComponentLookupBuildingData.TryGetComponent(prefab, out BuildingData buildingData) &&
+                        (buildingData.m_Flags & BuildingFlags.ColorizeLot) != 0;
+                    ComponentLookupColor[entity] = color;
+
+                    return;
+                }
+
+                // If get here without setting building color, then building simply remains default color.
+            }
+
+            /// <summary>
+            /// Set building color same as owner building.
+            /// </summary>
+            private void SetBuildingColorToOwnerColor(Entity entity, Entity ownerEntity)
+            {
+                // Get color of owner building.
+                if (ComponentLookupColor.TryGetComponent(ownerEntity, out Color ownerColor))
+                {
+                    // Set color of this entity to color of owner entity.
+                    // Building's SubColor remains unchanged.
+                    Color color = ComponentLookupColor[entity];
+                    color.m_Index = ownerColor.m_Index;
+                    color.m_Value = ownerColor.m_Value;
+                    ComponentLookupColor[entity] = color;
                 }
             }
         }
@@ -854,10 +1025,10 @@ namespace ResourceLocator
         private struct UpdateColorsJobTempObject : IJobChunk
         {
             // Color component lookup to update.
-            [NativeDisableParallelForRestriction] public ComponentLookup<Game.Objects.Color> ComponentLookupColor;
+            [NativeDisableParallelForRestriction] public ComponentLookup<Color> ComponentLookupColor;
 
             // Component type handles.
-            [ReadOnly] public ComponentTypeHandle<Game.Tools.Temp> ComponentTypeHandleTemp;
+            [ReadOnly] public ComponentTypeHandle<Temp> ComponentTypeHandleTemp;
 
             // Entity type handle.
             [ReadOnly] public EntityTypeHandle EntityTypeHandle;
@@ -869,10 +1040,10 @@ namespace ResourceLocator
             {
                 // Set color of object to color of its original.
                 NativeArray<Entity> entities = chunk.GetNativeArray(EntityTypeHandle);
-                NativeArray<Game.Tools.Temp> temps = chunk.GetNativeArray(ref ComponentTypeHandleTemp);
+                NativeArray<Temp> temps = chunk.GetNativeArray(ref ComponentTypeHandleTemp);
                 for (int i = 0; i < temps.Length; i++)
                 {
-                    if (ComponentLookupColor.TryGetComponent(temps[i].m_Original, out Game.Objects.Color originalColor))
+                    if (ComponentLookupColor.TryGetComponent(temps[i].m_Original, out Color originalColor))
                     {
                         ComponentLookupColor[entities[i]] = originalColor;
                     }
@@ -891,18 +1062,18 @@ namespace ResourceLocator
         private struct UpdateColorsJobSubObject : IJobChunk
         {
             // Color component lookup to update.
-            [NativeDisableParallelForRestriction] public ComponentLookup<Game.Objects.Color> ComponentLookupColor;
+            [NativeDisableParallelForRestriction] public ComponentLookup<Color> ComponentLookupColor;
 
             // Component lookups.
-            [ReadOnly] public ComponentLookup<Game.Buildings.   Building    > ComponentLookupBuilding;
-            [ReadOnly] public ComponentLookup<Game.Objects.     Elevation   > ComponentLookupElevation;
-            [ReadOnly] public ComponentLookup<Game.Common.      Owner       > ComponentLookupOwner;
-            [ReadOnly] public ComponentLookup<Game.Vehicles.    Vehicle     > ComponentLookupVehicle;
+            [ReadOnly] public ComponentLookup<Building      > ComponentLookupBuilding;
+            [ReadOnly] public ComponentLookup<Elevation     > ComponentLookupElevation;
+            [ReadOnly] public ComponentLookup<Owner         > ComponentLookupOwner;
+            [ReadOnly] public ComponentLookup<Vehicle       > ComponentLookupVehicle;
 
             // Component type handles.
-            [ReadOnly] public ComponentTypeHandle<Game.Objects. Elevation   > ComponentTypeHandleElevation;
-            [ReadOnly] public ComponentTypeHandle<Game.Common.  Owner       > ComponentTypeHandleOwner;
-            [ReadOnly] public ComponentTypeHandle<Game.Objects. Tree        > ComponentTypeHandleTree;
+            [ReadOnly] public ComponentTypeHandle<Elevation > ComponentTypeHandleElevation;
+            [ReadOnly] public ComponentTypeHandle<Owner     > ComponentTypeHandleOwner;
+            [ReadOnly] public ComponentTypeHandle<Tree      > ComponentTypeHandleTree;
 
             // Entity type handle.
             [ReadOnly] public EntityTypeHandle EntityTypeHandle;
@@ -912,19 +1083,19 @@ namespace ResourceLocator
             /// </summary>
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                NativeArray<Game.Common.Owner> owners = chunk.GetNativeArray(ref ComponentTypeHandleOwner);
+                NativeArray<Owner > owners   = chunk.GetNativeArray(ref ComponentTypeHandleOwner);
                 NativeArray<Entity> entities = chunk.GetNativeArray(EntityTypeHandle);
                 if (chunk.Has(ref ComponentTypeHandleTree))
                 {
-                    NativeArray<Game.Objects.Elevation> elevations = chunk.GetNativeArray(ref ComponentTypeHandleElevation);
+                    NativeArray<Elevation> elevations = chunk.GetNativeArray(ref ComponentTypeHandleElevation);
                     for (int i = 0; i < entities.Length; i++)
                     {
                         Entity entity = entities[i];
-                        Game.Common.Owner owner = owners[i];
-                        Game.Objects.Elevation elevation;
-                        bool flag = CollectionUtils.TryGet(elevations, i, out elevation) && (elevation.m_Flags & Game.Objects.ElevationFlags.OnGround) == 0;
+                        Owner owner = owners[i];
+                        Elevation elevation;
+                        bool flag = CollectionUtils.TryGet(elevations, i, out elevation) && (elevation.m_Flags & ElevationFlags.OnGround) == 0;
                         bool flag2 = flag && !ComponentLookupColor.HasComponent(owner.m_Owner);
-                        Game.Common.Owner newOwner;
+                        Owner newOwner;
                         while (ComponentLookupOwner.TryGetComponent(owner.m_Owner, out newOwner) && !ComponentLookupBuilding.HasComponent(owner.m_Owner) && !ComponentLookupVehicle.HasComponent(owner.m_Owner))
                         {
                             if (flag2)
@@ -935,12 +1106,12 @@ namespace ResourceLocator
                                 }
                                 else
                                 {
-                                    flag &= ComponentLookupElevation.TryGetComponent(owner.m_Owner, out elevation) && (elevation.m_Flags & Game.Objects.ElevationFlags.OnGround) == 0;
+                                    flag &= ComponentLookupElevation.TryGetComponent(owner.m_Owner, out elevation) && (elevation.m_Flags & ElevationFlags.OnGround) == 0;
                                 }
                             }
                             owner = newOwner;
                         }
-                        if (ComponentLookupColor.TryGetComponent(owner.m_Owner, out Game.Objects.Color color) && (flag || color.m_SubColor))
+                        if (ComponentLookupColor.TryGetComponent(owner.m_Owner, out Color color) && (flag || color.m_SubColor))
                         {
                             ComponentLookupColor[entity] = color;
                         }
@@ -950,13 +1121,13 @@ namespace ResourceLocator
 
                 for (int j = 0; j < entities.Length; j++)
                 {
-                    Game.Common.Owner owner = owners[j];
-                    Game.Common.Owner newOwner;
+                    Owner owner = owners[j];
+                    Owner newOwner;
                     while (ComponentLookupOwner.TryGetComponent(owner.m_Owner, out newOwner) && !ComponentLookupBuilding.HasComponent(owner.m_Owner) && !ComponentLookupVehicle.HasComponent(owner.m_Owner))
                     {
                         owner = newOwner;
                     }
-                    if (ComponentLookupColor.TryGetComponent(owner.m_Owner, out Game.Objects.Color color))
+                    if (ComponentLookupColor.TryGetComponent(owner.m_Owner, out Color color))
                     {
                         ComponentLookupColor[entities[j]] = color;
                     }
@@ -974,7 +1145,7 @@ namespace ResourceLocator
         private static BuildingColorSystem  _buildingColorSystem;
 
         // Other systems.
-        private Game.Tools.ToolSystem _toolSystem;
+        private ToolSystem _toolSystem;
         private ResourceLocatorUISystem _resourceLocatorUISystem;
 
         // Entity queries.
@@ -982,34 +1153,43 @@ namespace ResourceLocator
         private EntityQuery _queryDefault;
         private EntityQuery _queryCargoVehicle;
         private EntityQuery _queryMainBuilding;
-        private EntityQuery _queryMiddleBuilding;
         private EntityQuery _queryAttachmentBuilding;
+        private EntityQuery _queryMiddleBuilding;
         private EntityQuery _queryTempObject;
         private EntityQuery _querySubObject;
         
         // Harmony ID.
         private const string HarmonyID = "rcav8tr." + ModAssemblyInfo.Name;
 
-        // Nested arrays to hold storage amounts populated by jobs.
+        // Nested arrays to hold storage amounts and company counts populated by jobs.
         // The outer array is one for each possible thread.
         // The inner array is one for each resource.
-        private NativeArray<NativeArray<int>> _storageAmountRequires;
-        private NativeArray<NativeArray<int>> _storageAmountProduces;
-        private NativeArray<NativeArray<int>> _storageAmountSells;
-        private NativeArray<NativeArray<int>> _storageAmountStores;
-        private NativeArray<NativeArray<int>> _storageAmountInTransit;
+        private NativeArray<NativeArray<int>> _storageAmountsRequires;
+        private NativeArray<NativeArray<int>> _storageAmountsProduces;
+        private NativeArray<NativeArray<int>> _storageAmountsSells;
+        private NativeArray<NativeArray<int>> _storageAmountsStores;
+        private NativeArray<NativeArray<int>> _storageAmountsInTransit;
 
-        // Arrays to hold total storage amounts by resource.
-        // Add 1 to handle Resource.Last that Modular Resource Blocks mod uses.
-        private static readonly int ResourceCount = Game.Economy.EconomyUtils.ResourceCount + 1;
-        private int[] _totalStorageRequires  = new int[ResourceCount];
-        private int[] _totalStorageProduces  = new int[ResourceCount];
-        private int[] _totalStorageSells     = new int[ResourceCount];
-        private int[] _totalStorageStores    = new int[ResourceCount];
-        private int[] _totalStorageInTransit = new int[ResourceCount];
+        private NativeArray<NativeArray<int>> _companyCountsRequires;
+        private NativeArray<NativeArray<int>> _companyCountsProduces;
+        private NativeArray<NativeArray<int>> _companyCountsSells;
+        private NativeArray<NativeArray<int>> _companyCountsStores;
 
-        // Lock for accessing total storage amounts.
-        private readonly object _totalStorageLock = new object();
+        // Arrays to hold total storage amounts and company counts by resource.
+        private static readonly int ResourceCount = EconomyUtils.ResourceCount;
+        private int[] _totalStorageAmountsRequires  = new int[ResourceCount];
+        private int[] _totalStorageAmountsProduces  = new int[ResourceCount];
+        private int[] _totalStorageAmountsSells     = new int[ResourceCount];
+        private int[] _totalStorageAmountsStores    = new int[ResourceCount];
+        private int[] _totalStorageAmountsInTransit = new int[ResourceCount];
+
+        private int[] _totalCompanyCountsRequires   = new int[ResourceCount];
+        private int[] _totalCompanyCountsProduces   = new int[ResourceCount];
+        private int[] _totalCompanyCountsSells      = new int[ResourceCount];
+        private int[] _totalCompanyCountsStores     = new int[ResourceCount];
+
+        // Lock for accessing total storage amounts and company counts.
+        private readonly object _totalStorageAmountsCompanyCountsLock = new object();
 
         /// <summary>
         /// Initialize this system.
@@ -1024,7 +1204,7 @@ namespace ResourceLocator
             _buildingColorSystem = this;
 
             // Get other systems.
-            _toolSystem              = base.World.GetOrCreateSystemManaged<Game.Tools.ToolSystem>();
+            _toolSystem              = base.World.GetOrCreateSystemManaged<ToolSystem>();
             _resourceLocatorUISystem = base.World.GetOrCreateSystemManaged<ResourceLocatorUISystem>();
 
             // Query to get active building datas.
@@ -1037,8 +1217,8 @@ namespace ResourceLocator
                 {
                     All = new ComponentType[]
                     {
-                        ComponentType.ReadOnly<Game.Prefabs.    InfomodeActive>(),
-                        ComponentType.ReadOnly<Game.Prefabs.    InfoviewBuildingData>(),
+                        ComponentType.ReadOnly<InfomodeActive>(),
+                        ComponentType.ReadOnly<InfoviewBuildingData>(),
                     }
                 }
             );
@@ -1051,13 +1231,13 @@ namespace ResourceLocator
 		        {
 			        All = new ComponentType[]
 			        {
-				        ComponentType.ReadOnly <Game.Objects.   Object>(),
-				        ComponentType.ReadWrite<Game.Objects.   Color>(),
+				        ComponentType.ReadOnly <Object>(),
+				        ComponentType.ReadWrite<Color>(),
 			        },
 			        None = new ComponentType[]
 			        {
-				        ComponentType.ReadOnly<Game.Tools.      Hidden>(),
-				        ComponentType.ReadOnly<Game.Common.     Deleted>(),
+				        ComponentType.ReadOnly<Hidden>(),
+				        ComponentType.ReadOnly<Deleted>(),
 			        }
 		        }
             );
@@ -1070,22 +1250,22 @@ namespace ResourceLocator
                 {
 			        All = new ComponentType[]
 			        {
-				        ComponentType.ReadOnly <Game.Objects.   Object>(),
-                        ComponentType.ReadOnly <Game.Vehicles.  Vehicle>(),
-				        ComponentType.ReadWrite<Game.Objects.   Color>(),
+				        ComponentType.ReadOnly <Object>(),
+                        ComponentType.ReadOnly <Vehicle>(),
+				        ComponentType.ReadWrite<Color>(),
 			        },
                     Any = new ComponentType[]
                     {
-                        ComponentType.ReadOnly<Game.Vehicles.   DeliveryTruck>(),   // All road cargo vehicles.
-                        ComponentType.ReadOnly<Game.Vehicles.   CargoTransport>(),  // Cargo trains, ships, and airplanes.
+                        ComponentType.ReadOnly<DeliveryTruck>(),    // All road cargo vehicles.
+                        ComponentType.ReadOnly<CargoTransport>(),   // Cargo trains, ships, and airplanes.
                     },
 			        None = new ComponentType[]
 			        {
                         // Do not exclude hidden vehicles because they must be included in the in transit data.
 				        //ComponentType.ReadOnly<Hidden>(),
 
-				        ComponentType.ReadOnly<Game.Common.     Deleted>(),     // Exclude deleted vehicles.
-				        ComponentType.ReadOnly<Game.Tools.      Temp>(),        // Exclude temp (see temp objects query below).
+				        ComponentType.ReadOnly<Deleted>(),      // Exclude deleted vehicles.
+				        ComponentType.ReadOnly<Temp>(),         // Exclude temp (see temp objects query below).
 			        }
                 }
             );
@@ -1100,24 +1280,45 @@ namespace ResourceLocator
 		        {
 			        All = new ComponentType[]
 			        {
-				        ComponentType.ReadOnly <Game.Objects.   Object>(),
-                        ComponentType.ReadOnly <Game.Buildings. Building>(),
-				        ComponentType.ReadWrite<Game.Objects.   Color>(),
+				        ComponentType.ReadOnly <Object>(),
+                        ComponentType.ReadOnly <Building>(),
+				        ComponentType.ReadWrite<Color>(),
 			        },
 			        None = new ComponentType[]
 			        {
                         // Do not exclude hidden buildings because they must be included in the storage data.
 				        //ComponentType.ReadOnly<Hidden>(),
 
-                        ComponentType.ReadOnly<Game.Buildings.  Abandoned>(),   // Exclude abandoned buildings. 
-                        ComponentType.ReadOnly<Game.Buildings.  Condemned>(),   // Exclude condemned buildings.
-				        ComponentType.ReadOnly<Game.Common.     Deleted>(),     // Exclude deleted   buildings.
-                        ComponentType.ReadOnly<Game.Common.     Destroyed>(),   // Exclude destroyed buildings.
-				        ComponentType.ReadOnly<Game.Common.     Owner>(),       // Exclude subbuildings (see middle buildings query below).
-                        ComponentType.ReadOnly<Game.Objects.    Attachment>(),  // Exclude attachments  (see attachments    query below).
-				        ComponentType.ReadOnly<Game.Tools.      Temp>(),        // Exclude temp         (see temp objects   query below).
+                        ComponentType.ReadOnly<Abandoned>(),    // Exclude abandoned buildings. 
+                        ComponentType.ReadOnly<Condemned>(),    // Exclude condemned buildings.
+				        ComponentType.ReadOnly<Deleted>(),      // Exclude deleted   buildings.
+                        ComponentType.ReadOnly<Destroyed>(),    // Exclude destroyed buildings.
+				        ComponentType.ReadOnly<Owner>(),        // Exclude subbuildings (see middle buildings query below).
+                        ComponentType.ReadOnly<Attachment>(),   // Exclude attachments  (see attachments    query below).
+				        ComponentType.ReadOnly<Temp>(),         // Exclude temp         (see temp objects   query below).
 			        }
 		        }
+            );
+
+            // Query to get attachment buildings.
+            // Attachments are the lots attached to specialized industry.
+            _queryAttachmentBuilding = GetEntityQuery
+            (
+                new EntityQueryDesc
+                {
+                    All = new ComponentType[]
+                    {
+                        ComponentType.ReadOnly <Building>(),
+                        ComponentType.ReadOnly <Attachment>(),
+                        ComponentType.ReadWrite<Color>(),
+                    },
+                    None = new ComponentType[]
+                    {
+                        ComponentType.ReadOnly<Owner>(),        // Exclude middle buildings (see middle buildings query below).
+                        ComponentType.ReadOnly<Hidden>(),
+                        ComponentType.ReadOnly<Deleted>(),
+                    }
+                }
             );
 
             // Query to get middle buildings.
@@ -1129,36 +1330,15 @@ namespace ResourceLocator
                 {
                     All = new ComponentType[]
                     {
-                        ComponentType.ReadOnly<Game.Buildings.  Building>(),
-                        ComponentType.ReadOnly<Game.Common.     Owner>(),
-                        ComponentType.ReadWrite<Game.Objects.   Color>(),
+                        ComponentType.ReadOnly <Building>(),
+                        ComponentType.ReadOnly <Owner>(),
+                        ComponentType.ReadWrite<Color>(),
                     },
                     None = new ComponentType[]
                     {
-                        ComponentType.ReadOnly<Game.Objects.    Attachment>(),  // Exclude attachments (see attachment buildings query below).
-                        ComponentType.ReadOnly<Game.Tools.      Hidden>(),
-                        ComponentType.ReadOnly<Game.Common.     Deleted>(),
-                    }
-                }
-            );
-
-            // Query to get attachment buildings.
-            // Attachments are the lots attached to specialized industry.
-            _queryAttachmentBuilding = GetEntityQuery
-            (
-                new EntityQueryDesc
-                {
-                    All = new ComponentType[]
-                    {
-                        ComponentType.ReadOnly <Game.Buildings. Building>(),
-                        ComponentType.ReadOnly <Game.Objects.   Attachment>(),
-                        ComponentType.ReadWrite<Game.Objects.   Color>(),
-                    },
-                    None = new ComponentType[]
-                    {
-                        ComponentType.ReadOnly<Game.Common.     Owner>(),       // Exclude middle buildings (see middle buildings query above).
-                        ComponentType.ReadOnly<Game.Tools.      Hidden>(),
-                        ComponentType.ReadOnly<Game.Common.     Deleted>(),
+                        ComponentType.ReadOnly<Attachment>(),   // Exclude attachments (see attachment buildings query above).
+                        ComponentType.ReadOnly<Hidden>(),
+                        ComponentType.ReadOnly<Deleted>(),
                     }
                 }
             );
@@ -1173,14 +1353,14 @@ namespace ResourceLocator
                 {
                     All = new ComponentType[]
                     {
-                        ComponentType.ReadOnly <Game.Objects.   Object>(),
-                        ComponentType.ReadWrite<Game.Objects.   Color>(),
-                        ComponentType.ReadOnly <Game.Tools.     Temp>(),
+                        ComponentType.ReadOnly <Object>(),
+                        ComponentType.ReadWrite<Color>(),
+                        ComponentType.ReadOnly <Temp>(),
                     },
                     None = new ComponentType[]
                     {
-                        ComponentType.ReadOnly<Game.Tools.      Hidden>(),
-                        ComponentType.ReadOnly<Game.Common.     Deleted>(),
+                        ComponentType.ReadOnly<Hidden>(),
+                        ComponentType.ReadOnly<Deleted>(),
                     }
                 }
             );
@@ -1194,50 +1374,44 @@ namespace ResourceLocator
                 {
                     All = new ComponentType[]
                     {
-                        ComponentType.ReadOnly <Game.Objects.   Object>(),
-                        ComponentType.ReadOnly <Game.Common.    Owner>(),
-                        ComponentType.ReadWrite<Game.Objects.   Color>(),
+                        ComponentType.ReadOnly <Object>(),
+                        ComponentType.ReadOnly <Owner>(),
+                        ComponentType.ReadWrite<Color>(),
                     },
                     None = new ComponentType[]
                     {
                         // Exclude all same things as base game logic.
-                        ComponentType.ReadOnly<Game.Tools.      Hidden>(),
-                        ComponentType.ReadOnly<Game.Common.     Deleted>(),
-                        ComponentType.ReadOnly<Game.Vehicles.   Vehicle>(),
-                        ComponentType.ReadOnly<Game.Creatures.  Creature>(),
-                        ComponentType.ReadOnly<Game.Buildings.  Building>(),
-                        ComponentType.ReadOnly<Game.Objects.    UtilityObject>(),
+                        ComponentType.ReadOnly<Hidden>(),
+                        ComponentType.ReadOnly<Deleted>(),
+                        ComponentType.ReadOnly<Vehicle>(),
+                        ComponentType.ReadOnly<Creature>(),
+                        ComponentType.ReadOnly<Building>(),
+                        ComponentType.ReadOnly<UtilityObject>(),
                     }
                 }
             );
 
-            // Create outer arrays for storage amounts, one entry for each possible parallel job thread.
-            // Arrays are persistent so that they do not need to be created and disposed every frame.
-            int threadCount = JobsUtility.ThreadIndexCount;
-            _storageAmountRequires  = new(threadCount, Allocator.Persistent);
-            _storageAmountProduces  = new(threadCount, Allocator.Persistent);
-            _storageAmountSells     = new(threadCount, Allocator.Persistent);
-            _storageAmountStores    = new(threadCount, Allocator.Persistent);
-            _storageAmountInTransit = new(threadCount, Allocator.Persistent);
-            for (int i = 0; i < threadCount; i++)
-            {
-                // Create inner arrays for storage amounts, one for each resource.
-                _storageAmountRequires [i] = new NativeArray<int>(ResourceCount, Allocator.Persistent);
-                _storageAmountProduces [i] = new NativeArray<int>(ResourceCount, Allocator.Persistent);
-                _storageAmountSells    [i] = new NativeArray<int>(ResourceCount, Allocator.Persistent);
-                _storageAmountStores   [i] = new NativeArray<int>(ResourceCount, Allocator.Persistent);
-                _storageAmountInTransit[i] = new NativeArray<int>(ResourceCount, Allocator.Persistent);
-            }
+            // Create nested arrays to hold storage amounts and company counts.
+            _storageAmountsRequires  = ProductionConsumptionUtils.CreateArrays();
+            _storageAmountsProduces  = ProductionConsumptionUtils.CreateArrays();
+            _storageAmountsSells     = ProductionConsumptionUtils.CreateArrays();
+            _storageAmountsStores    = ProductionConsumptionUtils.CreateArrays();
+            _storageAmountsInTransit = ProductionConsumptionUtils.CreateArrays();
+            
+            _companyCountsRequires   = ProductionConsumptionUtils.CreateArrays();
+            _companyCountsProduces   = ProductionConsumptionUtils.CreateArrays();
+            _companyCountsSells      = ProductionConsumptionUtils.CreateArrays();
+            _companyCountsStores     = ProductionConsumptionUtils.CreateArrays();
 
             // Use Harmony to patch ObjectColorSystem.OnUpdate with BuildingColorSystem.OnUpdatePrefix.
             // When this mod's infoview is displayed, it is not necessary to execute ObjectColorSystem.OnUpdate.
             // By using a Harmony prefix, this system can prevent the execution of ObjectColorSystem.OnUpdate.
             // Note that ObjectColorSystem.OnUpdate can be patched, but the jobs in ObjectColorSystem cannot be patched because they are burst compiled.
             // Create this patch last to ensure all other initializations are complete before OnUpdatePrefix is called.
-            MethodInfo originalMethod = typeof(Game.Rendering.ObjectColorSystem).GetMethod("OnUpdate", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo originalMethod = typeof(ObjectColorSystem).GetMethod("OnUpdate", BindingFlags.Instance | BindingFlags.NonPublic);
             if (originalMethod == null)
             {
-                Mod.log.Error($"Unable to find original method {nameof(Game.Rendering.ObjectColorSystem)}.OnUpdate.");
+                Mod.log.Error($"Unable to find original method {nameof(ObjectColorSystem)}.OnUpdate.");
                 return;
             }
             MethodInfo prefixMethod = typeof(BuildingColorSystem).GetMethod(nameof(OnUpdatePrefix), BindingFlags.Static | BindingFlags.NonPublic);
@@ -1254,29 +1428,19 @@ namespace ResourceLocator
         /// </summary>
         protected override void OnDestroy()
         {
+            // Dispose of persistent storage amount and company count arrays.
+            ProductionConsumptionUtils.DisposeArrays(in _storageAmountsRequires );
+            ProductionConsumptionUtils.DisposeArrays(in _storageAmountsProduces );
+            ProductionConsumptionUtils.DisposeArrays(in _storageAmountsSells    );
+            ProductionConsumptionUtils.DisposeArrays(in _storageAmountsStores   );
+            ProductionConsumptionUtils.DisposeArrays(in _storageAmountsInTransit);
+            
+            ProductionConsumptionUtils.DisposeArrays(in _companyCountsRequires  );
+            ProductionConsumptionUtils.DisposeArrays(in _companyCountsProduces  );
+            ProductionConsumptionUtils.DisposeArrays(in _companyCountsSells     );
+            ProductionConsumptionUtils.DisposeArrays(in _companyCountsStores    );
+
             base.OnDestroy();
-
-            // Dispose of persistent storage amount arrays.
-            DisposeStorageAmount(ref _storageAmountRequires );
-            DisposeStorageAmount(ref _storageAmountProduces );
-            DisposeStorageAmount(ref _storageAmountSells    );
-            DisposeStorageAmount(ref _storageAmountStores   );
-            DisposeStorageAmount(ref _storageAmountInTransit);
-        }
-
-        /// <summary>
-        /// Dispose of a persistent storage amount array.
-        /// </summary>
-        private void DisposeStorageAmount(ref NativeArray<NativeArray<int>> storageAmount)
-        {
-            // Dispose inner arrays.
-            for (int i = 0; i < storageAmount.Length; i++)
-            {
-                storageAmount[i].Dispose();
-            }
-
-            // Dispose the outer array.
-            storageAmount.Dispose();
         }
 
         /// <summary>
@@ -1317,15 +1481,15 @@ namespace ResourceLocator
             // Active infoview is for this mod.
 
             // Create native array of active infomodes.
-            ComponentTypeHandle<Game.Prefabs.InfoviewBuildingData> componentTypeHandleInfoviewBuildingData = SystemAPI.GetComponentTypeHandle<Game.Prefabs.InfoviewBuildingData>(true);
-            ComponentTypeHandle<Game.Prefabs.InfomodeActive      > componentTypeHandleInfomodeActive       = SystemAPI.GetComponentTypeHandle<Game.Prefabs.InfomodeActive      >(true);
-            List<ActiveInfomode> tempActiveInfomodes = new List<ActiveInfomode>();
-            NativeArray<ArchetypeChunk> tempActiveBuildingDataChunks = _queryActiveBuildingData.ToArchetypeChunkArray(Allocator.TempJob);
+            ComponentTypeHandle<InfoviewBuildingData> componentTypeHandleInfoviewBuildingData = SystemAPI.GetComponentTypeHandle<InfoviewBuildingData>(true);
+            ComponentTypeHandle<InfomodeActive      > componentTypeHandleInfomodeActive       = SystemAPI.GetComponentTypeHandle<InfomodeActive      >(true);
+            List<ActiveInfomode> tempActiveInfomodes = new();
+            NativeArray<ArchetypeChunk> tempActiveBuildingDataChunks = _queryActiveBuildingData.ToArchetypeChunkArray(Allocator.Temp);
             foreach (ArchetypeChunk activeBuildingDataChunk in tempActiveBuildingDataChunks)
             {
                 // Do each active building data.
-                NativeArray<Game.Prefabs.InfoviewBuildingData> infoviewBuildingDatas = activeBuildingDataChunk.GetNativeArray(ref componentTypeHandleInfoviewBuildingData);
-                NativeArray<Game.Prefabs.InfomodeActive      > infomodeActives       = activeBuildingDataChunk.GetNativeArray(ref componentTypeHandleInfomodeActive);
+                NativeArray<InfoviewBuildingData> infoviewBuildingDatas = activeBuildingDataChunk.GetNativeArray(ref componentTypeHandleInfoviewBuildingData);
+                NativeArray<InfomodeActive      > infomodeActives       = activeBuildingDataChunk.GetNativeArray(ref componentTypeHandleInfomodeActive);
                 for (int j = 0; j < infoviewBuildingDatas.Length; j++)
                 {
                     // Skip special cases.
@@ -1343,92 +1507,93 @@ namespace ResourceLocator
                 }
             }
             tempActiveInfomodes.Sort();
-            NativeArray<ActiveInfomode> activeInfomodes = new NativeArray<ActiveInfomode>(tempActiveInfomodes.ToArray(), Allocator.TempJob);
-            tempActiveBuildingDataChunks.Dispose();
+            NativeArray<ActiveInfomode> activeInfomodes = new(tempActiveInfomodes.ToArray(), Allocator.TempJob);
 
-            // Clear storage amounts.
-            ClearStorageAmount(ref _storageAmountRequires );
-            ClearStorageAmount(ref _storageAmountProduces );
-            ClearStorageAmount(ref _storageAmountSells    );
-            ClearStorageAmount(ref _storageAmountStores   );
-            ClearStorageAmount(ref _storageAmountInTransit);
+            // Initialize storage amounts and company counts.
+            ProductionConsumptionUtils.InitializeArrays(in _storageAmountsRequires );
+            ProductionConsumptionUtils.InitializeArrays(in _storageAmountsProduces );
+            ProductionConsumptionUtils.InitializeArrays(in _storageAmountsSells    );
+            ProductionConsumptionUtils.InitializeArrays(in _storageAmountsStores   );
+            ProductionConsumptionUtils.InitializeArrays(in _storageAmountsInTransit);
+            
+            ProductionConsumptionUtils.InitializeArrays(in _companyCountsRequires  );
+            ProductionConsumptionUtils.InitializeArrays(in _companyCountsProduces  );
+            ProductionConsumptionUtils.InitializeArrays(in _companyCountsSells     );
+            ProductionConsumptionUtils.InitializeArrays(in _companyCountsStores    );
 
 
             // Create a job to update default colors.
-            UpdateColorsJobDefault updateColorsJobDefault = new UpdateColorsJobDefault()
+            UpdateColorsJobDefault updateColorsJobDefault = new()
             {
-                ComponentTypeHandleColor = SystemAPI.GetComponentTypeHandle<Game.Objects.Color>(false),
+                ComponentTypeHandleColor = SystemAPI.GetComponentTypeHandle<Color>(false),
             };
 
 
             // Create a job to update cargo vehicle colors.
-            UpdateColorsJobCargoVehicle updateColorsJobCargoVehicle = new UpdateColorsJobCargoVehicle()
+            UpdateColorsJobCargoVehicle updateColorsJobCargoVehicle = new()
             {
-                ComponentTypeHandleColor            = SystemAPI.GetComponentTypeHandle  <Game.Objects.  Color           >(false),
-                ComponentLookupColor                = SystemAPI.GetComponentLookup      <Game.Objects.  Color           >(false),
+                ComponentTypeHandleColor            = SystemAPI.GetComponentTypeHandle  <Color              >(false),
+                ComponentLookupColor                = SystemAPI.GetComponentLookup      <Color              >(false),
 
-                BufferLookupResources               = SystemAPI.GetBufferLookup         <Game.Economy.  Resources       >(true),
+                BufferLookupResources               = SystemAPI.GetBufferLookup         <Resources          >(true),
 
-                ComponentLookupController           = SystemAPI.GetComponentLookup      <Game.Vehicles. Controller      >(true),
-                ComponentLookupCurrentDistrict      = SystemAPI.GetComponentLookup      <Game.Areas.    CurrentDistrict >(true),
-                ComponentLookupOwner                = SystemAPI.GetComponentLookup      <Game.Common.   Owner           >(true),
-                ComponentLookupPropertyRenter       = SystemAPI.GetComponentLookup      <Game.Buildings.PropertyRenter  >(true),
+                ComponentLookupController           = SystemAPI.GetComponentLookup      <Controller         >(true),
+                ComponentLookupCurrentDistrict      = SystemAPI.GetComponentLookup      <CurrentDistrict    >(true),
+                ComponentLookupOutsideConnection    = SystemAPI.GetComponentLookup      <OutsideConnection  >(true),
+                ComponentLookupOwner                = SystemAPI.GetComponentLookup      <Owner              >(true),
+                ComponentLookupPropertyRenter       = SystemAPI.GetComponentLookup      <PropertyRenter     >(true),
+                ComponentLookupTarget               = SystemAPI.GetComponentLookup      <Target             >(true),
 
-                ComponentTypeHandleDeliveryTruck    = SystemAPI.GetComponentTypeHandle  <Game.Vehicles. DeliveryTruck   >(true),
+                ComponentTypeHandleDeliveryTruck    = SystemAPI.GetComponentTypeHandle  <DeliveryTruck      >(true),
 
                 EntityTypeHandle                    = SystemAPI.GetEntityTypeHandle(),
 
                 ActiveInfomodes                     = activeInfomodes,
 
-                StorageAmountInTransit              = _storageAmountInTransit,
-
                 SelectedDistrict                    = _resourceLocatorUISystem.selectedDistrict,
                 SelectedDistrictIsEntireCity        = _resourceLocatorUISystem.selectedDistrict == ResourceLocatorUISystem.EntireCity,
+
+                StorageAmountsInTransit             = _storageAmountsInTransit,
             };
 
 
             // Create a job to update main building colors.
-            UpdateColorsJobMainBuilding updateColorsJobMainBuilding = new UpdateColorsJobMainBuilding()
+            UpdateColorsJobMainBuilding updateColorsJobMainBuilding = new()
             {
-                ComponentTypeHandleColor                    = SystemAPI.GetComponentTypeHandle<Game.Objects.Color>(false),
+                ComponentTypeHandleColor                    = SystemAPI.GetComponentTypeHandle<Color>(false),
 
-                BufferLookupRenter                          = SystemAPI.GetBufferLookup<Game.Buildings.         Renter                      >(true),
-                BufferLookupResources                       = SystemAPI.GetBufferLookup<Game.Economy.           Resources                   >(true),
+                BufferLookupRenter                          = SystemAPI.GetBufferLookup<Renter                          >(true),
+                BufferLookupResources                       = SystemAPI.GetBufferLookup<Resources                       >(true),
                 
-                ComponentLookupBuildingData                 = SystemAPI.GetComponentLookup<Game.Prefabs.        BuildingData                >(true),
-                ComponentLookupBuildingPropertyData         = SystemAPI.GetComponentLookup<Game.Prefabs.        BuildingPropertyData        >(true),
-                ComponentLookupCompanyData                  = SystemAPI.GetComponentLookup<Game.Companies.      CompanyData                 >(true),
-                ComponentLookupExtractorCompany             = SystemAPI.GetComponentLookup<Game.Companies.      ExtractorCompany            >(true),
-                ComponentLookupIndustrialProcessData        = SystemAPI.GetComponentLookup<Game.Prefabs.        IndustrialProcessData       >(true),
-                ComponentLookupPrefabRef                    = SystemAPI.GetComponentLookup<Game.Prefabs.        PrefabRef                   >(true),
-                ComponentLookupProcessingCompany            = SystemAPI.GetComponentLookup<Game.Companies.      ProcessingCompany           >(true),
-                ComponentLookupServiceAvailable             = SystemAPI.GetComponentLookup<Game.Companies.      ServiceAvailable            >(true),
-                ComponentLookupStorageCompany               = SystemAPI.GetComponentLookup<Game.Companies.      StorageCompany              >(true),
-                ComponentLookupStorageCompanyData           = SystemAPI.GetComponentLookup<Game.Prefabs.        StorageCompanyData          >(true),
+                ComponentLookupBuildingData                 = SystemAPI.GetComponentLookup<BuildingData                 >(true),
+                ComponentLookupBuildingPropertyData         = SystemAPI.GetComponentLookup<BuildingPropertyData         >(true),
+                ComponentLookupCompanyData                  = SystemAPI.GetComponentLookup<CompanyData                  >(true),
+                ComponentLookupExtractorCompany             = SystemAPI.GetComponentLookup<ExtractorCompany             >(true),
+                ComponentLookupIndustrialProcessData        = SystemAPI.GetComponentLookup<IndustrialProcessData        >(true),
+                ComponentLookupPrefabRef                    = SystemAPI.GetComponentLookup<PrefabRef                    >(true),
+                ComponentLookupProcessingCompany            = SystemAPI.GetComponentLookup<ProcessingCompany            >(true),
+                ComponentLookupServiceAvailable             = SystemAPI.GetComponentLookup<ServiceAvailable             >(true),
+                ComponentLookupStorageCompany               = SystemAPI.GetComponentLookup<StorageCompany               >(true),
+                ComponentLookupStorageCompanyData           = SystemAPI.GetComponentLookup<StorageCompanyData           >(true),
                 
-                ComponentTypeHandleCargoTransportStation    = SystemAPI.GetComponentTypeHandle<Game.Buildings.  CargoTransportStation       >(true),
-                ComponentTypeHandleCommercialProperty       = SystemAPI.GetComponentTypeHandle<Game.Buildings.  CommercialProperty          >(true),
-                ComponentTypeHandleElectricityProducer      = SystemAPI.GetComponentTypeHandle<Game.Buildings.  ElectricityProducer         >(true),
-                ComponentTypeHandleEmergencyShelter         = SystemAPI.GetComponentTypeHandle<Game.Buildings.  EmergencyShelter            >(true),
-                ComponentTypeHandleGarbageFacility          = SystemAPI.GetComponentTypeHandle<Game.Buildings.  GarbageFacility             >(true),
-                ComponentTypeHandleHospital                 = SystemAPI.GetComponentTypeHandle<Game.Buildings.  Hospital                    >(true),
-                ComponentTypeHandleIndustrialProperty       = SystemAPI.GetComponentTypeHandle<Game.Buildings.  IndustrialProperty          >(true),
-                ComponentTypeHandleResourceProducer         = SystemAPI.GetComponentTypeHandle<Game.Buildings.  ResourceProducer            >(true),
+                ComponentTypeHandleCargoTransportStation    = SystemAPI.GetComponentTypeHandle<CargoTransportStation    >(true),
+                ComponentTypeHandleCommercialProperty       = SystemAPI.GetComponentTypeHandle<CommercialProperty       >(true),
+                ComponentTypeHandleElectricityProducer      = SystemAPI.GetComponentTypeHandle<ElectricityProducer      >(true),
+                ComponentTypeHandleEmergencyShelter         = SystemAPI.GetComponentTypeHandle<EmergencyShelter         >(true),
+                ComponentTypeHandleGarbageFacility          = SystemAPI.GetComponentTypeHandle<GarbageFacility          >(true),
+                ComponentTypeHandleHospital                 = SystemAPI.GetComponentTypeHandle<Hospital                 >(true),
+                ComponentTypeHandleIndustrialProperty       = SystemAPI.GetComponentTypeHandle<IndustrialProperty       >(true),
+                ComponentTypeHandleResourceProducer         = SystemAPI.GetComponentTypeHandle<ResourceProducer         >(true),
 
-                ComponentTypeHandleCurrentDistrict          = SystemAPI.GetComponentTypeHandle<Game.Areas.      CurrentDistrict             >(true),
-                ComponentTypeHandleDestroyed                = SystemAPI.GetComponentTypeHandle<Game.Common.     Destroyed                   >(true),
-                ComponentTypeHandleOutsideConnection        = SystemAPI.GetComponentTypeHandle<Game.Objects.    OutsideConnection           >(true),
-                ComponentTypeHandlePrefabRef                = SystemAPI.GetComponentTypeHandle<Game.Prefabs.    PrefabRef                   >(true),
-                ComponentTypeHandleUnderConstruction        = SystemAPI.GetComponentTypeHandle<Game.Objects.    UnderConstruction           >(true),
+                ComponentTypeHandleCurrentDistrict          = SystemAPI.GetComponentTypeHandle<CurrentDistrict          >(true),
+                ComponentTypeHandleDestroyed                = SystemAPI.GetComponentTypeHandle<Destroyed                >(true),
+                ComponentTypeHandleOutsideConnection        = SystemAPI.GetComponentTypeHandle<OutsideConnection        >(true),
+                ComponentTypeHandlePrefabRef                = SystemAPI.GetComponentTypeHandle<PrefabRef                >(true),
+                ComponentTypeHandleUnderConstruction        = SystemAPI.GetComponentTypeHandle<UnderConstruction        >(true),
                 
                 EntityTypeHandle                            = SystemAPI.GetEntityTypeHandle(),
                 
                 ActiveInfomodes                             = activeInfomodes,
-                
-                StorageAmountRequires                       = _storageAmountRequires,
-                StorageAmountProduces                       = _storageAmountProduces,
-                StorageAmountSells                          = _storageAmountSells,
-                StorageAmountStores                         = _storageAmountStores,
 
                 IncludeRecyclingCenter                      = Mod.ModSettings.IncludeRecyclingCenter,
                 IncludeCoalPowerPlant                       = Mod.ModSettings.IncludeCoalPowerPlant,
@@ -1440,48 +1605,72 @@ namespace ResourceLocator
                 SelectedDistrict                            = _resourceLocatorUISystem.selectedDistrict,
                 SelectedDistrictIsEntireCity                = _resourceLocatorUISystem.selectedDistrict == ResourceLocatorUISystem.EntireCity,
 
-                DisplayOption                               = _resourceLocatorUISystem.displayOption,
-            };
-
-
-            // Create a job to update middle building colors.
-            UpdateColorsJobMiddleBuilding updateColorsJobMiddleBuilding = new UpdateColorsJobMiddleBuilding()
-            {
-                ComponentLookupColor        = SystemAPI.GetComponentLookup<Game.Objects.Color>(false),
-                ComponentTypeHandleOwner    = SystemAPI.GetComponentTypeHandle<Game.Common.Owner>(true),
-                EntityTypeHandle            = SystemAPI.GetEntityTypeHandle(),
+                DisplayOption                               = Mod.ModSettings.DisplayOption,
+                
+                StorageAmountsRequires                      = _storageAmountsRequires,
+                StorageAmountsProduces                      = _storageAmountsProduces,
+                StorageAmountsSells                         = _storageAmountsSells,
+                StorageAmountsStores                        = _storageAmountsStores,
+                
+                CompanyCountsRequires                       = _companyCountsRequires,
+                CompanyCountsProduces                       = _companyCountsProduces,
+                CompanyCountsSells                          = _companyCountsSells,
+                CompanyCountsStores                         = _companyCountsStores,
             };
 
 
             // Create a job to update attachment building colors.
-            UpdateColorsJobAttachmentBuilding updateColorsJobAttachmentBuilding = new UpdateColorsJobAttachmentBuilding()
+            UpdateColorsJobAttachmentBuilding updateColorsJobAttachmentBuilding = new()
             {
-                ComponentLookupColor            = SystemAPI.GetComponentLookup<Game.Objects.Color>(false),
-                ComponentTypeHandleAttachment   = SystemAPI.GetComponentTypeHandle<Game.Objects.Attachment>(true),
+                ComponentLookupColor            = SystemAPI.GetComponentLookup<Color>(false),
+                ComponentTypeHandleAttachment   = SystemAPI.GetComponentTypeHandle<Attachment>(true),
                 EntityTypeHandle                = SystemAPI.GetEntityTypeHandle(),
             };
 
 
-            // Create a job to update temp object colors.
-            UpdateColorsJobTempObject updateColorsJobTempObject = new UpdateColorsJobTempObject()
+            // Create a job to update middle building colors.
+            UpdateColorsJobMiddleBuilding updateColorsJobMiddleBuilding = new()
             {
-                ComponentLookupColor    = SystemAPI.GetComponentLookup<Game.Objects.Color>(false),
-                ComponentTypeHandleTemp = SystemAPI.GetComponentTypeHandle<Game.Tools.Temp>(true),
+                ComponentLookupColor                = SystemAPI.GetComponentLookup<Color                >(false),
+                
+                ComponentLookupBuildingData         = SystemAPI.GetComponentLookup<BuildingData         >(true),
+                ComponentLookupGateData             = SystemAPI.GetComponentLookup<GateData             >(true),
+                ComponentLookupPrefabRef            = SystemAPI.GetComponentLookup<PrefabRef            >(true),
+                ComponentLookupStorageCompanyData   = SystemAPI.GetComponentLookup<StorageCompanyData   >(true),
+                
+                ComponentTypeHandleOwner            = SystemAPI.GetComponentTypeHandle<Owner            >(true),
+                ComponentTypeHandlePrefabRef        = SystemAPI.GetComponentTypeHandle<PrefabRef        >(true),
+
+                EntityTypeHandle                    = SystemAPI.GetEntityTypeHandle(),
+
+                DisplayOption                       = Mod.ModSettings.DisplayOption,
+                IncludeCargoStation                 = Mod.ModSettings.IncludeCargoStation,
+            };
+
+
+            // Create a job to update temp object colors.
+            UpdateColorsJobTempObject updateColorsJobTempObject = new()
+            {
+                ComponentLookupColor    = SystemAPI.GetComponentLookup<Color>(false),
+                ComponentTypeHandleTemp = SystemAPI.GetComponentTypeHandle<Temp>(true),
                 EntityTypeHandle        = SystemAPI.GetEntityTypeHandle(),
             };
 
             
             // Create a job to update sub object colors.
-            UpdateColorsJobSubObject updateColorsJobSubObject = new UpdateColorsJobSubObject()
+            UpdateColorsJobSubObject updateColorsJobSubObject = new()
             {
-                ComponentLookupColor            = SystemAPI.GetComponentLookup<Game.Objects.Color>(false),
-                ComponentLookupBuilding         = SystemAPI.GetComponentLookup<Game.Buildings.      Building    >(true),
-                ComponentLookupElevation        = SystemAPI.GetComponentLookup<Game.Objects.        Elevation   >(true),
-                ComponentLookupOwner            = SystemAPI.GetComponentLookup<Game.Common.         Owner       >(true),
-                ComponentLookupVehicle          = SystemAPI.GetComponentLookup<Game.Vehicles.       Vehicle     >(true),
-                ComponentTypeHandleElevation    = SystemAPI.GetComponentTypeHandle<Game.Objects.    Elevation   >(true),
-                ComponentTypeHandleOwner        = SystemAPI.GetComponentTypeHandle<Game.Common.     Owner       >(true),
-                ComponentTypeHandleTree         = SystemAPI.GetComponentTypeHandle<Game.Objects.    Tree        >(true),
+                ComponentLookupColor            = SystemAPI.GetComponentLookup<Color            >(false),
+
+                ComponentLookupBuilding         = SystemAPI.GetComponentLookup<Building         >(true),
+                ComponentLookupElevation        = SystemAPI.GetComponentLookup<Elevation        >(true),
+                ComponentLookupOwner            = SystemAPI.GetComponentLookup<Owner            >(true),
+                ComponentLookupVehicle          = SystemAPI.GetComponentLookup<Vehicle          >(true),
+
+                ComponentTypeHandleElevation    = SystemAPI.GetComponentTypeHandle<Elevation    >(true),
+                ComponentTypeHandleOwner        = SystemAPI.GetComponentTypeHandle<Owner        >(true),
+                ComponentTypeHandleTree         = SystemAPI.GetComponentTypeHandle<Tree         >(true),
+
                 EntityTypeHandle                = SystemAPI.GetEntityTypeHandle(),
             };
 
@@ -1490,12 +1679,13 @@ namespace ResourceLocator
             // The cargo vehicle and main building jobs can run at the same time as each other but only after the default job.
             // Schedule each job to execute in parallel (i.e. job uses multiple threads, if available).
             // Parallel threads execute much faster than a single thread.
+            // Do attachment buildings before middle buildings because some middle buildings have an attachment building as owner.
             JobHandle jobHandleDefault            = JobChunkExtensions.ScheduleParallel(updateColorsJobDefault,            _queryDefault,            base.Dependency);
             JobHandle jobHandleCargoVehicle       = JobChunkExtensions.ScheduleParallel(updateColorsJobCargoVehicle,       _queryCargoVehicle,       jobHandleDefault);
             JobHandle jobHandleMainBuilding       = JobChunkExtensions.ScheduleParallel(updateColorsJobMainBuilding,       _queryMainBuilding,       jobHandleDefault);
-            JobHandle jobHandleMiddleBuilding     = JobChunkExtensions.ScheduleParallel(updateColorsJobMiddleBuilding,     _queryMiddleBuilding,     jobHandleMainBuilding);
-            JobHandle jobHandleAttachmentBuilding = JobChunkExtensions.ScheduleParallel(updateColorsJobAttachmentBuilding, _queryAttachmentBuilding, jobHandleMiddleBuilding);
-            JobHandle jobHandleTempObject         = JobChunkExtensions.ScheduleParallel(updateColorsJobTempObject,         _queryTempObject,         jobHandleAttachmentBuilding);
+            JobHandle jobHandleAttachmentBuilding = JobChunkExtensions.ScheduleParallel(updateColorsJobAttachmentBuilding, _queryAttachmentBuilding, jobHandleMainBuilding);
+            JobHandle jobHandleMiddleBuilding     = JobChunkExtensions.ScheduleParallel(updateColorsJobMiddleBuilding,     _queryMiddleBuilding,     jobHandleAttachmentBuilding);
+            JobHandle jobHandleTempObject         = JobChunkExtensions.ScheduleParallel(updateColorsJobTempObject,         _queryTempObject,         jobHandleMiddleBuilding);
             JobHandle jobHandleSubObject          = JobChunkExtensions.ScheduleParallel(updateColorsJobSubObject,          _querySubObject,          jobHandleTempObject);
 
             // Prevent these jobs from running again until last job is complete.
@@ -1506,19 +1696,27 @@ namespace ResourceLocator
             
             // Note that the subsequent jobs could still be executing at this point, which is okay.
 
-            // Dispose active infomodes now that the cargo vehicle and main building jobs are complete.
-            activeInfomodes.Dispose();
-
             // Lock the thread while writing totals.
-            lock (_totalStorageLock)
+            lock (_totalStorageAmountsCompanyCountsLock)
             {
                 // Accumulate totals.
-                AccumulateTotals(ref _storageAmountRequires,  _totalStorageRequires);
-                AccumulateTotals(ref _storageAmountProduces,  _totalStorageProduces);
-                AccumulateTotals(ref _storageAmountSells,     _totalStorageSells);
-                AccumulateTotals(ref _storageAmountStores,    _totalStorageStores);
-                AccumulateTotals(ref _storageAmountInTransit, _totalStorageInTransit);
+                ProductionConsumptionUtils.ConsolidateValues(in _storageAmountsRequires,  out _totalStorageAmountsRequires);
+                ProductionConsumptionUtils.ConsolidateValues(in _storageAmountsProduces,  out _totalStorageAmountsProduces);
+                ProductionConsumptionUtils.ConsolidateValues(in _storageAmountsSells,     out _totalStorageAmountsSells);
+                ProductionConsumptionUtils.ConsolidateValues(in _storageAmountsStores,    out _totalStorageAmountsStores);
+                ProductionConsumptionUtils.ConsolidateValues(in _storageAmountsInTransit, out _totalStorageAmountsInTransit);
+                
+                ProductionConsumptionUtils.ConsolidateValues(in _companyCountsRequires,   out _totalCompanyCountsRequires);
+                ProductionConsumptionUtils.ConsolidateValues(in _companyCountsProduces,   out _totalCompanyCountsProduces);
+                ProductionConsumptionUtils.ConsolidateValues(in _companyCountsSells,      out _totalCompanyCountsSells);
+                ProductionConsumptionUtils.ConsolidateValues(in _companyCountsStores,     out _totalCompanyCountsStores);
             }
+
+            // Complete the rest of the jobs to help prevent screen flicker.
+            jobHandleSubObject.Complete();
+
+            // Dispose active infomodes.
+            activeInfomodes.Dispose();
 
             // This system handled object colors for this mod's infoview.
             // Do not execute the original game logic.
@@ -1526,74 +1724,46 @@ namespace ResourceLocator
         }
 
         /// <summary>
-        /// Clear storage amount nested arrays.
+        /// Get storage amounts and company counts.
         /// </summary>
-        private void ClearStorageAmount(ref NativeArray<NativeArray<int>> storageAmount)
-        {
-            // Do each outer array element, one for each thread.
-            for (int i = 0; i < storageAmount.Length; i++)
-            {
-                // Do each inner array element, one for each resource.
-                NativeArray<int> storageAmountOfI = storageAmount[i];
-                for (int j = 0; j < storageAmountOfI.Length; j++)
-                {
-                    storageAmountOfI[j] = 0;
-                }
-            }
-        }
+        public void GetStorageAmountsCompanyCounts(
+            out int[] storageAmountsRequires,
+            out int[] storageAmountsProduces,
+            out int[] storageAmountsSells,
+            out int[] storageAmountsStores,
+            out int[] storageAmountsInTransit,
 
-        /// <summary>
-        /// Accumulate totals from storage amounts.
-        /// </summary>
-        private void AccumulateTotals(ref NativeArray<NativeArray<int>> storageAmount, int[] total)
-        {
-            // Initialize return values, one for each resource.
-            int totalLength = total.Length;
-            for (int i = 0; i < totalLength; i++)
-            {
-                total[i] = 0;
-            }
-
-            // Do each outer array element, one for each thread.
-            for (int i = 0; i < storageAmount.Length; i++)
-            {
-                // Do each inner array element, one for each resource.
-                NativeArray<int> storageAmountOfI = storageAmount[i];
-                for (int j = 0; j < storageAmountOfI.Length; j++)
-                {
-                    // Add storage amount from this entry to total.
-                    // Index is the same between the two arrays.
-                    total[j] += storageAmountOfI[j];
-                }
-            }
-        }
-
-        /// <summary>
-        /// Get storage amounts.
-        /// </summary>
-        public void GetStorageAmounts(
-            out int[] storageRequires,
-            out int[] storageProduces,
-            out int[] storageSells,
-            out int[] storageStores,
-            out int[] storageInTransit)
+            out int[] companyCountsRequires,
+            out int[] companyCountsProduces,
+            out int[] companyCountsSells,
+            out int[] companyCountsStores)
         {
             // Initialize return arrays.
-            storageRequires  = new int[_totalStorageRequires .Length];
-            storageProduces  = new int[_totalStorageProduces .Length];
-            storageSells     = new int[_totalStorageSells    .Length];
-            storageStores    = new int[_totalStorageStores   .Length];
-            storageInTransit = new int[_totalStorageInTransit.Length];
+            storageAmountsRequires  = new int[_totalStorageAmountsRequires .Length];
+            storageAmountsProduces  = new int[_totalStorageAmountsProduces .Length];
+            storageAmountsSells     = new int[_totalStorageAmountsSells    .Length];
+            storageAmountsStores    = new int[_totalStorageAmountsStores   .Length];
+            storageAmountsInTransit = new int[_totalStorageAmountsInTransit.Length];
+
+            companyCountsRequires   = new int[_totalCompanyCountsRequires  .Length];
+            companyCountsProduces   = new int[_totalCompanyCountsProduces  .Length];
+            companyCountsSells      = new int[_totalCompanyCountsSells     .Length];
+            companyCountsStores     = new int[_totalCompanyCountsStores    .Length];
 
             // Lock the thread while reading totals.
-            lock (_totalStorageLock)
+            lock (_totalStorageAmountsCompanyCountsLock)
             {
-                // Copy storage amounts to return arrays.
-                Array.Copy(_totalStorageRequires,  storageRequires,  _totalStorageRequires .Length);
-                Array.Copy(_totalStorageProduces,  storageProduces,  _totalStorageProduces .Length);
-                Array.Copy(_totalStorageSells,     storageSells,     _totalStorageSells    .Length);
-                Array.Copy(_totalStorageStores,    storageStores,    _totalStorageStores   .Length);
-                Array.Copy(_totalStorageInTransit, storageInTransit, _totalStorageInTransit.Length);
+                // Copy storage amounts and company counts to return arrays.
+                Array.Copy(_totalStorageAmountsRequires,  storageAmountsRequires,  _totalStorageAmountsRequires .Length);
+                Array.Copy(_totalStorageAmountsProduces,  storageAmountsProduces,  _totalStorageAmountsProduces .Length);
+                Array.Copy(_totalStorageAmountsSells,     storageAmountsSells,     _totalStorageAmountsSells    .Length);
+                Array.Copy(_totalStorageAmountsStores,    storageAmountsStores,    _totalStorageAmountsStores   .Length);
+                Array.Copy(_totalStorageAmountsInTransit, storageAmountsInTransit, _totalStorageAmountsInTransit.Length);
+
+                Array.Copy(_totalCompanyCountsRequires,   companyCountsRequires,   _totalCompanyCountsRequires  .Length);
+                Array.Copy(_totalCompanyCountsProduces,   companyCountsProduces,   _totalCompanyCountsProduces  .Length);
+                Array.Copy(_totalCompanyCountsSells,      companyCountsSells,      _totalCompanyCountsSells     .Length);
+                Array.Copy(_totalCompanyCountsStores,     companyCountsStores,     _totalCompanyCountsStores    .Length);
             }
         }
     }

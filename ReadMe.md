@@ -64,9 +64,14 @@ Hover the cursor over a resource to get detailed information about that resource
   The simulation must run for a bit for the rates to be updated by the game.
 - For the Produces **Display Option**, the production, surplus, and deficit rates are also shown in the blue, green, and red bars behind the resource name.
   The resource with the largest production, surplus, or deficit has a full bar and the other bars are sized relative to that one.
-- Most of the above is the same information available on the Production tab of the City Economy view.
-- Current amount in transit on cargo vehicles (see **Cargo Vehicles** below).
-  **In Transit** amount can include resources being transported between outside connections.
+- Most of the above information is also available on the Production tab of the City Economy view.
+  Note that the data on the Production tab is updated only once every 45 game minutes and is smoothed over multiple updates.
+  The Resource Locator data is updated much more often.
+  So the data might not match exactly between Resource Locator and the Production tab.
+- Current amount in transit on **Cargo Vehicles** (see below).
+  **In Transit** amount excludes resources being transported between two outside connections.
+- Number of companies in the **selected district** that require, produce, sell, or store the resource according to the selected **Display Option**.
+  Number of companies excludes **Special Case Buildings** (see below) because they do not have companies.
 
 ### Buildings With A Single Resource
 - If a building requires, produces, sells, or stores only one resource, the building color is set according to that resource.
@@ -74,18 +79,20 @@ Hover the cursor over a resource to get detailed information about that resource
 
 ### Buildings With Multiple Resources. 
 - Many buildings require more than one resource.
-- Most buildings produce only one resource (exception is Recycling Center).
-- Most buildings store only one resource (exception is cargo transport buildings).
-- If a building requires, produces, or stores more than one resource, the building color is set according to the top **selected resource**.
+  Most buildings produce only one resource (exception is Recycling Center).
+  If a building requires or produces more than one resource, the building color is set according to the top **selected resource**.
   For example, Steel requires both Coal and Metals.
   If the **Display Option** is Requires and both Coal and Metals resources are selected,
   then for a building that produces Steel, the color is set for Coal because Coal is higher in the list than Metals.
+- Most buildings store only one resource (exception is cargo transport buildings).
+  If a building stores more than one resource, the color is set according to the top **selected resource** currently stored in the building.
+- Even though different port storage buildings can hold different resources, the color for all is set the same as the port gate.
 - To view these buildings in their other color(s), deselect the top resource of the building.
 
 ### Special Case Buildings
 Most buildings that require, produce, sell, and store resources are commercial, industrial, and office companies.
 Some resources are produced in buildings other than companies.
-Some resources are stored in buildings other than warehouses.
+Some resources are stored in buildings other than industrial warehouses.
 
 The special case buildings are:
 - Recycling Center - Produces from garbage: Metals, Plastics, Textiles, Paper
@@ -94,7 +101,7 @@ The special case buildings are:
 - Medical Facility - Stores for its own use: Pharmaceuticals
 - Emergency Shelter - Stores for its own use: Food
 - Cargo Transport Station - Stores multiple resources that can be used by the city and imported/exported.
-  Buildings include:  Cargo Train Terminal, Cargo Harbor, Airport with the Cargo Terminal upgrade, and International Airport.
+  Buildings include:  Cargo Train Terminal, Cargo Harbor, Airport with the Cargo Terminal upgrade, International Airport, Port, and Storage Yards.
 
 See **Options** for whether or not special case buildings are included.
 
@@ -112,6 +119,9 @@ Abandoned, condemned, deleted, and destroyed buildings are excluded.
 - The selected **Display Option** does not affect how vehicle color is set.
 - A vehicle is included only if the vehicle's district is the **selected district**.
   The vehicle's district is determined by the vehicle owner's property.
+- Cargo vehicles traveling between two outside connections are excluded.
+- The Reach Stacker, Fishing Boat, and Oil Tanker do not actually carry any resource.
+  Therefore, the vehicle color is not set.
 
 # Options
 The following settings are available on the Options screen.

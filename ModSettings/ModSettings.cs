@@ -24,7 +24,7 @@ namespace ResourceLocator
 
             SetDefaults();
         }
-        
+
         /// <summary>
         /// Set a default value for every setting that has a value that can change.
         /// </summary>
@@ -38,13 +38,13 @@ namespace ResourceLocator
             IncludeEmeregencyShelter = false;
             IncludeCargoStation      = false;
 
-            DisplayOption = ResourceLocatorUISystem.DefaultDisplayOption;
+            DisplayOption = DisplayOption.Requires;
 
-            ColorOption = ResourceLocatorUISystem.DefaultColorOption;
+            ColorOption = ColorOption.Multiple;
 
-            OneColorR = ResourceLocatorUISystem.DefaultOneColor.r;
-            OneColorG = ResourceLocatorUISystem.DefaultOneColor.g;
-            OneColorB = ResourceLocatorUISystem.DefaultOneColor.b;
+            OneColorR = 1f;
+            OneColorG = 0f;
+            OneColorB = 0f;
         }
 
         // General description for special case buildings.

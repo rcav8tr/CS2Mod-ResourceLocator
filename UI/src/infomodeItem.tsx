@@ -23,17 +23,24 @@ enum UnitSystem
 // Define resource info passed from C#.
 type ResourceInfo =
 {
-    buildingType:       RLBuildingType;
+    buildingType:               RLBuildingType;
 
-    storageRequires:    number;
-    storageProduces:    number;
-    storageSells:       number;
-    storageStores:      number;
-    storageInTransit:   number;
-    
-    rateProduction:     number;
-    rateSurplus:        number;
-    rateDeficit:        number;
+    storageAmountRequires:      number;
+    storageAmountProduces:      number;
+    storageAmountSells:         number;
+    storageAmountStores:        number;
+    storageAmountInTransit:     number;
+
+    rateValid:                  boolean;
+    rateProduction:             number;
+    rateSurplus:                number;
+
+    companyCountRequires:       number;
+    companyCountProduces:       number;
+    companyCountSells:          number;
+    companyCountStores:         number;
+
+    hasWeight:                  boolean;
 }
 
 // Define bindings.
@@ -68,6 +75,11 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     const translationRateProduction     = translate("EconomyPanel.PRODUCTION_PAGE_PRODUCTION") + ": ";
     const translationRateSurplus        = translate("EconomyPanel.PRODUCTION_PAGE_SURPLUS"   ) + ": "
     const translationRateDeficit        = translate("EconomyPanel.PRODUCTION_PAGE_DEFICIT"   ) + ": "
+    const translationCompanies          = translate("StatisticsPanel.STAT_TITLE[Companies]");
+    const translationCompaniesRequires  = translationCompanies + " - " + translate(UITranslationKey.DisplayOptionRequires) + ": ";
+    const translationCompaniesProduces  = translationCompanies + " - " + translate(UITranslationKey.DisplayOptionProduces) + ": ";
+    const translationCompaniesSells     = translationCompanies + " - " + translate(UITranslationKey.DisplayOptionSells   ) + ": ";
+    const translationCompaniesStores    = translationCompanies + " - " + translate(UITranslationKey.DisplayOptionStores  ) + ": ";
 
     // Format base infomode tooltip into paragraphs.
     // This also applies markdown formatting embedded in the text.
@@ -86,9 +98,16 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     let valueStorageStores:     number = 0;
     let valueStorageInTransit:  number = 0;
 
+    let valueRateValid:         boolean = false;
     let valueRateProduction:    number = 0;
     let valueRateSurplus:       number = 0;
-    let valueRateDeficit:       number = 0;
+
+    let valueCompaniesRequires: number = 0;
+    let valueCompaniesProduces: number = 0;
+    let valueCompaniesSells:    number = 0;
+    let valueCompaniesStores:   number = 0;
+
+    let valueHasWeight:         boolean = false;
 
     // Do each resource info.
     const resourceInfos: ResourceInfo[] = useValue(bindingResourceInfos);
@@ -100,19 +119,35 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
         {
             // Get storage and rate values for this resource.
             // Note that deficit comes thru as a positive value.
-            valueStorageRequires    = resourceInfo.storageRequires;
-            valueStorageProduces    = resourceInfo.storageProduces;
-            valueStorageSells       = resourceInfo.storageSells;
-            valueStorageStores      = resourceInfo.storageStores;
-            valueStorageInTransit   = resourceInfo.storageInTransit;
+            valueStorageRequires    = resourceInfo.storageAmountRequires;
+            valueStorageProduces    = resourceInfo.storageAmountProduces;
+            valueStorageSells       = resourceInfo.storageAmountSells;
+            valueStorageStores      = resourceInfo.storageAmountStores;
+            valueStorageInTransit   = resourceInfo.storageAmountInTransit;
 
+            valueRateValid          = resourceInfo.rateValid;
             valueRateProduction     = resourceInfo.rateProduction;
             valueRateSurplus        = resourceInfo.rateSurplus;
-            valueRateDeficit        = resourceInfo.rateDeficit;
+
+            valueCompaniesRequires  = resourceInfo.companyCountRequires;
+            valueCompaniesProduces  = resourceInfo.companyCountProduces;
+            valueCompaniesSells     = resourceInfo.companyCountSells;
+            valueCompaniesStores    = resourceInfo.companyCountStores;
+
+            valueHasWeight          = resourceInfo.hasWeight;
 
             // Found the building type.  Stop checking.
             break;
         }
+    }
+
+    // Check for deficit (i.e. negative surplus).
+    // Deficit is handled here as a positive amount.
+    let valueRateDeficit: number = 0;
+    if (valueRateSurplus < 0)
+    {
+        valueRateDeficit = -valueRateSurplus;
+        valueRateSurplus = 0;
     }
 
     // Get max storage and rate values from the last resource info, which should be MaxValues.
@@ -124,14 +159,14 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
         // Get max storage value for the current Display Option.
         switch (displayOption)
         {
-            case DisplayOption.Requires: valueStorageMaxAll = maxResourceInfo.storageRequires; break;
-            case DisplayOption.Produces: valueStorageMaxAll = maxResourceInfo.storageProduces; break;
-            case DisplayOption.Sells:    valueStorageMaxAll = maxResourceInfo.storageSells;    break;
-            case DisplayOption.Stores:   valueStorageMaxAll = maxResourceInfo.storageStores;   break;
+            case DisplayOption.Requires: valueStorageMaxAll = maxResourceInfo.storageAmountRequires; break;
+            case DisplayOption.Produces: valueStorageMaxAll = maxResourceInfo.storageAmountProduces; break;
+            case DisplayOption.Sells:    valueStorageMaxAll = maxResourceInfo.storageAmountSells;    break;
+            case DisplayOption.Stores:   valueStorageMaxAll = maxResourceInfo.storageAmountStores;   break;
         }
 
-        // Get max rate value between display option, in transit, production, surplus, and deficit.
-        valueRateMaxAll = Math.max(valueRateMaxAll, maxResourceInfo.storageInTransit, maxResourceInfo.rateProduction, maxResourceInfo.rateSurplus, maxResourceInfo.rateDeficit);
+        // Get max rate value between production, surplus, and deficit.
+        valueRateMaxAll = Math.max(maxResourceInfo.rateProduction, maxResourceInfo.rateSurplus);
     }
 
     // Function to compute a value as a percent of a max.
@@ -203,57 +238,88 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     // Scalling factor and UOM prefix are the same between storage and rate.
     // UOM text is different between storage and rate.
     let scalingFactor:  number = 1;
-    let uomPrefix:      string | null = null;
-    let storageUOMText: string | null = null;
-    let rateUOMText:    string | null = null;
-    if (valueUnitSettings.unitSystem === UnitSystem.Metric)
+    let uomPrefix:      string | null = "";
+    let storageUOMText: string | null = "";
+    let rateUOMText:    string | null = "";
+    if (valueHasWeight)
     {
-        // Check scale of max value.
-        if (valueMaxThis < 100000)
+        // Resource has weight.
+
+        // Check unit system.
+        if (valueUnitSettings.unitSystem === UnitSystem.Metric)
         {
-            // No scaling needed.
-            storageUOMText = translate(ModuleResolver.instance.Loc.Common.VALUE_KILOGRAM.displayName);
-            rateUOMText    = translate(ModuleResolver.instance.Loc.Common.VALUE_KG_PER_MONTH.displayName);
-        }
-        else if (valueMaxThis < 100000000)
-        {
-            // Convert kg to tons.
-            scalingFactor = 1000;
-            storageUOMText = translate(ModuleResolver.instance.Loc.Common.VALUE_TON.displayName);
-            rateUOMText    = translate(ModuleResolver.instance.Loc.Common.VALUE_TON_PER_MONTH.displayName);
+            // Check scale of max value.
+            if (valueMaxThis < 100000)
+            {
+                // No scaling needed.
+                storageUOMText = translate(ModuleResolver.instance.Loc.Common.VALUE_KILOGRAM.displayName);
+                rateUOMText    = translate(ModuleResolver.instance.Loc.Common.VALUE_KG_PER_MONTH.displayName);
+            }
+            else if (valueMaxThis < 100000000)
+            {
+                // Convert kg to tons.
+                scalingFactor = 1000;
+                storageUOMText = translate(ModuleResolver.instance.Loc.Common.VALUE_TON.displayName);
+                rateUOMText    = translate(ModuleResolver.instance.Loc.Common.VALUE_TON_PER_MONTH.displayName);
+            }
+            else
+            {
+                // Convert kg to kilo tons.
+                scalingFactor = 1000000;
+                uomPrefix      = translate(ModuleResolver.instance.Loc.Common.VALUE_THOUSAND.displayName);
+                storageUOMText = translate(ModuleResolver.instance.Loc.Common.VALUE_TON.displayName);
+                rateUOMText    = translate(ModuleResolver.instance.Loc.Common.VALUE_TON_PER_MONTH.displayName);
+            }
         }
         else
         {
-            // Convert kg to kilo tons.
-            scalingFactor = 1000000;
-            uomPrefix      = translate(UITranslationKey.UnitOfMeasurePrefixKilo);
-            storageUOMText = translate(ModuleResolver.instance.Loc.Common.VALUE_TON.displayName);
-            rateUOMText    = translate(ModuleResolver.instance.Loc.Common.VALUE_TON_PER_MONTH.displayName);
+            // Check scale of max value.
+            if (valueMaxThis < 100000)
+            {
+                // No scaling needed.
+                storageUOMText = translate(ModuleResolver.instance.Loc.Common.VALUE_POUND.displayName);
+                rateUOMText    = translate(ModuleResolver.instance.Loc.Common.VALUE_POUND_PER_MONTH.displayName);
+            }
+            else if (valueMaxThis < 200000000)
+            {
+                // Convert pounds to short tons.
+                scalingFactor = 2000;
+                storageUOMText = translate(ModuleResolver.instance.Loc.Common.VALUE_SHORT_TON.displayName);
+                rateUOMText    = translate(ModuleResolver.instance.Loc.Common.VALUE_SHORT_TON_PER_MONTH.displayName);
+            }
+            else
+            {
+                // Convert pounds to kilo short tons.
+                scalingFactor = 2000000;
+                uomPrefix      = translate(ModuleResolver.instance.Loc.Common.VALUE_THOUSAND.displayName);
+                storageUOMText = translate(ModuleResolver.instance.Loc.Common.VALUE_SHORT_TON.displayName);
+                rateUOMText    = translate(ModuleResolver.instance.Loc.Common.VALUE_SHORT_TON_PER_MONTH.displayName);
+            }
         }
     }
     else
     {
+        // Resource has no weight, just a count.
+
+        // Rate UOM is always per month.
+        rateUOMText = translate(ModuleResolver.instance.Loc.Common.VALUE_PER_MONTH.displayName);
+
         // Check scale of max value.
         if (valueMaxThis < 100000)
         {
             // No scaling needed.
-            storageUOMText = translate(ModuleResolver.instance.Loc.Common.VALUE_POUND.displayName);
-            rateUOMText    = translate(ModuleResolver.instance.Loc.Common.VALUE_POUND_PER_MONTH.displayName);
         }
-        else if (valueMaxThis < 200000000)
+        else if (valueMaxThis < 100000000)
         {
-            // Convert pounds to short tons.
-            scalingFactor = 2000;
-            storageUOMText = translate(ModuleResolver.instance.Loc.Common.VALUE_SHORT_TON.displayName);
-            rateUOMText    = translate(ModuleResolver.instance.Loc.Common.VALUE_SHORT_TON_PER_MONTH.displayName);
+            // Convert count to thousands.
+            scalingFactor = 1000;
+            uomPrefix = translate(ModuleResolver.instance.Loc.Common.VALUE_THOUSAND.displayName);
         }
         else
         {
-            // Convert pounds to kilo short tons.
-            scalingFactor = 2000000;
-            uomPrefix      = translate(UITranslationKey.UnitOfMeasurePrefixKilo);
-            storageUOMText = translate(ModuleResolver.instance.Loc.Common.VALUE_SHORT_TON.displayName);
-            rateUOMText    = translate(ModuleResolver.instance.Loc.Common.VALUE_SHORT_TON_PER_MONTH.displayName);
+            // Convert count to millions.
+            scalingFactor = 1000000;
+            uomPrefix = translate(ModuleResolver.instance.Loc.Common.VALUE_MILLION.displayName);
         }
     }
 
@@ -268,29 +334,42 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     const valueScaledRateSurplus:      number = Math.round(valueRateSurplus      / scalingFactor);
     const valueScaledRateDeficit:      number = Math.round(valueRateDeficit      / scalingFactor);
 
-    // Remove variable placeholders from unit of measure text.
-    storageUOMText = "" + storageUOMText?.replace("{SIGN}{VALUE}", "");
-    rateUOMText    = "" + rateUOMText   ?.replace("{SIGN}{VALUE}", "");
+    // Remove variable placeholders from unit of measure prefix and text.
+    uomPrefix      = "" + uomPrefix     ?.replace("{SIGN}{VALUE}", "").trim();
+    storageUOMText = "" + storageUOMText?.replace("{SIGN}{VALUE}", "").trim();
+    rateUOMText    = "" + rateUOMText   ?.replace("{SIGN}{VALUE}", "").trim();
 
     // Function to format a value and append unit of measure prefix and text.
-    function FormatValue(value: number, uomText: string): string
+    function FormatValue(value: number, prefix: string, uomText: string): string
     {
         // Logic adapted from the game's index.js for localized numbers.
         const regexReplacement = /\B(?=(\d{3})+(?!\d))/g;
         return value.toFixed(0).replace(regexReplacement, translationThousandsSeparator) +
-            " " + (uomPrefix && uomPrefix.length > 0 ? uomPrefix + " " : "") + uomText?.trim()
+            (prefix && prefix.length > 0 ? " " + prefix : "") +
+            (uomText.length > 0 ? " " + uomText : "");
     }
 
     // Compute formatted storage and rate values.
-    const formattedStorageRequires:     string = FormatValue(valueScaledStorageRequires,  storageUOMText);
-    const formattedStorageProduces:     string = FormatValue(valueScaledStorageProduces,  storageUOMText);
-    const formattedStorageSells:        string = FormatValue(valueScaledStorageSells,     storageUOMText);
-    const formattedStorageStores:       string = FormatValue(valueScaledStorageStores,    storageUOMText);
-    const formattedInTransit:           string = FormatValue(valueScaledStorageInTransit, storageUOMText);
+    const formattedStorageRequires:     string = FormatValue(valueScaledStorageRequires,  uomPrefix, storageUOMText);
+    const formattedStorageProduces:     string = FormatValue(valueScaledStorageProduces,  uomPrefix, storageUOMText);
+    const formattedStorageSells:        string = FormatValue(valueScaledStorageSells,     uomPrefix, storageUOMText);
+    const formattedStorageStores:       string = FormatValue(valueScaledStorageStores,    uomPrefix, storageUOMText);
+    const formattedInTransit:           string = FormatValue(valueScaledStorageInTransit, uomPrefix, storageUOMText);
 
     const valueScaledRateSurplusDeficit: number = valueScaledRateDeficit > 0 ? valueScaledRateDeficit : valueScaledRateSurplus;
-    const formattedRateProduction:      string = FormatValue(valueScaledRateProduction,     rateUOMText);
-    const formattedRateSurplusDeficit:  string = FormatValue(valueScaledRateSurplusDeficit, rateUOMText);
+    let   formattedRateProduction:      string = FormatValue(valueScaledRateProduction,     uomPrefix, rateUOMText);
+    let   formattedRateSurplusDeficit:  string = FormatValue(valueScaledRateSurplusDeficit, uomPrefix, rateUOMText);
+
+    const formattedCompaniesRequires:   string = FormatValue(valueCompaniesRequires,  "", "");
+    const formattedCompaniesProduces:   string = FormatValue(valueCompaniesProduces,  "", "");
+    const formattedCompaniesSells:      string = FormatValue(valueCompaniesSells,     "", "");
+    const formattedCompaniesStores:     string = FormatValue(valueCompaniesStores,    "", "");
+
+    // Check for invalid rates.
+    if (!valueRateValid)
+    {
+        formattedRateProduction = formattedRateSurplusDeficit = "" + translate("EconomyPanel.NO_PRODUCTION_DATA");
+    }
 
     // Compute styles to set text color based on display option.
     const styleColorRequires:       Partial<CSSProperties> = displayOption === DisplayOption.Requires ? { color: "var(--resourceLocatorStorageColor)" } : {};
@@ -298,8 +377,8 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     const styleColorSells:          Partial<CSSProperties> = displayOption === DisplayOption.Sells    ? { color: "var(--resourceLocatorStorageColor)" } : {};
     const styleColorStores:         Partial<CSSProperties> = displayOption === DisplayOption.Stores   ? { color: "var(--resourceLocatorStorageColor)" } : {};
 
-    const styleColorProduction:     Partial<CSSProperties> = displayOption === DisplayOption.Produces ? { color: "var(--resourceLocatorProductionColor)" } : {};
-    const styleColorSurplusDeficit: Partial<CSSProperties> = displayOption === DisplayOption.Produces ? { color: valueRateDeficit > 0 ? "var(--resourceLocatorDeficitColor)" : "var(--resourceLocatorSurplusColor)" } : {};
+    const styleColorProduction:     Partial<CSSProperties> = valueRateValid && displayOption === DisplayOption.Produces ? { color: "var(--resourceLocatorProductionColor)" } : {};
+    const styleColorSurplusDeficit: Partial<CSSProperties> = valueRateValid && displayOption === DisplayOption.Produces ? { color: valueRateDeficit > 0 ? "var(--resourceLocatorDeficitColor)" : "var(--resourceLocatorSurplusColor)" } : {};
 
     // Get icon based on building type.
     // This logic assumes all building type enum names are the same as the resource file names.
@@ -327,7 +406,8 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
 
     // Mostly adapted from the base game building color infomode with the following general changes:
     //      Use element styles to override default base game appearance, mostly for making the infomode more compact.
-    //      Add an icon before the symbol.
+    //      Add a resource icon before the resource name.
+    //      Add a color icon if the color option is Multiple.
     //      Add storage and rate bars.
     //      Include resource information in the tooltip.
     return (
@@ -367,6 +447,24 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
                         <div className={styles.resourceLocatorInfomodeDataRow} style={styleColorSurplusDeficit}>
                             <div className={styles.resourceLocatorInfomodeDataRowHeading}>{valueRateDeficit > 0 ? translationRateDeficit : translationRateSurplus}</div>
                             <div className={styles.resourceLocatorInfomodeDataRowValue}>{formattedRateSurplusDeficit}</div>
+                        </div>
+                    </div>
+                    <div className={styles.resourceLocatorInfomodeData}>
+                        <div className={styles.resourceLocatorInfomodeDataRow}>
+                            <div className={styles.resourceLocatorInfomodeDataRowHeading}>{translationCompaniesRequires}</div>
+                            <div className={styles.resourceLocatorInfomodeDataRowValue}>{formattedCompaniesRequires}</div>
+                        </div>
+                        <div className={styles.resourceLocatorInfomodeDataRow}>
+                            <div className={styles.resourceLocatorInfomodeDataRowHeading}>{translationCompaniesProduces}</div>
+                            <div className={styles.resourceLocatorInfomodeDataRowValue}>{formattedCompaniesProduces}</div>
+                        </div>
+                        <div className={styles.resourceLocatorInfomodeDataRow}>
+                            <div className={styles.resourceLocatorInfomodeDataRowHeading}>{translationCompaniesSells}</div>
+                            <div className={styles.resourceLocatorInfomodeDataRowValue}>{formattedCompaniesSells}</div>
+                        </div>
+                        <div className={styles.resourceLocatorInfomodeDataRow}>
+                            <div className={styles.resourceLocatorInfomodeDataRowHeading}>{translationCompaniesStores}</div>
+                            <div className={styles.resourceLocatorInfomodeDataRowValue}>{formattedCompaniesStores}</div>
                         </div>
                     </div>
                     <div className={styles.resourceLocatorInfomodeDataRowBottom} />

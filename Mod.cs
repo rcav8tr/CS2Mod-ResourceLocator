@@ -54,6 +54,9 @@ namespace ResourceLocator
 
                 // Initialize the infoview.
                 RLInfoviewUtils.Initialize();
+                
+                // Initialize production/surplus.
+                ProductionSurplus.Initialize();
 
                 // Create and activate this mod's systems.
                 updateSystem.UpdateAt<ResourceLocatorUISystem>(SystemUpdatePhase.UIUpdate);
@@ -67,12 +70,13 @@ namespace ResourceLocator
                 //    // Exclude assets.
                 //    if (!keyValue.Key.StartsWith("Assets."))
                 //    {
-                //        //if (keyValue.Value.ToLower().StartsWith("color"))
+                //        //if (keyValue.Value.ToLower().Contains("companies"))
                 //        //if (keyValue.Value.StartsWith("Cargo"))
-                //        if (keyValue.Value == ("Distinct"))
+                //        if (keyValue.Value.ToLower() == "parks & recreation")
                 //        {
                 //            log.Info(keyValue.Key + "\t" + keyValue.Value);
                 //        }
+                //        // SelectedInfoPanel.VEHICLE_STATES[Fishing]
                 //    }
                 //}
 
@@ -83,7 +87,7 @@ namespace ResourceLocator
                 //    localizationManager.SetActiveLocale(localeID);
                 //    foreach (System.Collections.Generic.KeyValuePair<string, string> keyValue in localizationManager.activeDictionary.entries)
                 //    {
-                //        if (keyValue.Key == "EconomyPanel.PRODUCTION_PAGE_PRODUCTIONLINK[Import]")
+                //        if (keyValue.Key == "Tutorials.TITLE[InlandFishFarmingTutorial]")
                 //        {
                 //            log.Info(keyValue.Key + "\t" + localeID + "\t" + keyValue.Value);
                 //            break;

@@ -229,11 +229,6 @@ namespace ResourceLocator
             sb.AppendLine();
             sb.Append(GetTranslationsContent(csFile, "Resource category text.", resourceCategoryText));
 
-            // Include unit of measure text.
-            TranslationKeys unitOfMeasureText = new TranslationKeys() { "UnitOfMeasurePrefixKilo", };
-            sb.AppendLine();
-            sb.Append(GetTranslationsContent(csFile, "Unit of measure text.", unitOfMeasureText));
-
             // For C# file only, include settings translations.
             if (csFile)
             {

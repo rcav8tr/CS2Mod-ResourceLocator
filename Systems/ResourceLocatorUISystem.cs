@@ -3,15 +3,12 @@ using Colossal.UI.Binding;
 using Game.Areas;
 using Game.Economy;
 using Game.Prefabs;
-using Game.Simulation;
 using Game.Tools;
 using Game.UI;
 using Game.UI.InGame;
 using System;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Jobs;
-using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Scripting;
 
@@ -43,14 +40,10 @@ namespace ResourceLocator
         private bool _previouslyDisplayed;
 
         // Other systems.
-        private NameSystem              _nameSystem;
-        private ToolSystem              _toolSystem;
-        private ResourceSystem          _resourceSystem;
-        private PrefabSystem            _prefabSystem;
-        private CountCompanyDataSystem  _countCompanyDataSystem;
-        private IndustrialDemandSystem  _industrialDemandSystem;
-        private CommercialDemandSystem  _commercialDemandSystem;
-        private BuildingColorSystem     _buildingColorSystem;
+        private BuildingColorSystem _buildingColorSystem;
+        private NameSystem          _nameSystem;
+        private ResourceSystem      _resourceSystem;
+        private ToolSystem          _toolSystem;
 
         // C# to UI binding names.
         public const string BindingNameSelectedDistrict = "SelectedDistrict";
@@ -76,19 +69,9 @@ namespace ResourceLocator
 
         // Districts.
         private EntityQuery _districtQuery;
-        private DistrictInfos _districtInfos = new DistrictInfos();
+        private DistrictInfos _districtInfos = new();
         public static Entity EntireCity { get; } = Entity.Null;
         public Entity selectedDistrict { get; set; } = EntireCity;
-
-        // Display option.
-        public const DisplayOption DefaultDisplayOption = DisplayOption.Requires;
-        public DisplayOption displayOption { get; set; } = DefaultDisplayOption;
-
-        // Color options.
-        public const ColorOption DefaultColorOption = ColorOption.Multiple;
-        public ColorOption colorOption { get; set; } = DefaultColorOption;
-        public static readonly Color DefaultOneColor = new Color(1f, 0f, 0f, 1f);
-        public Color oneColor { get; set; } = DefaultOneColor;
 
         /// <summary>
         /// Do one-time initialization of the system.
@@ -101,26 +84,17 @@ namespace ResourceLocator
             try
             {
                 // Get other systems.
-                _nameSystem             = base.World.GetOrCreateSystemManaged<NameSystem>();
-                _toolSystem             = base.World.GetOrCreateSystemManaged<ToolSystem>();
-                _resourceSystem         = base.World.GetOrCreateSystemManaged<ResourceSystem>();
-                _prefabSystem           = base.World.GetOrCreateSystemManaged<PrefabSystem>();
-                _countCompanyDataSystem = base.World.GetOrCreateSystemManaged<CountCompanyDataSystem>();
-                _industrialDemandSystem = base.World.GetOrCreateSystemManaged<IndustrialDemandSystem>();
-                _commercialDemandSystem = base.World.GetOrCreateSystemManaged<CommercialDemandSystem>();
                 _buildingColorSystem    = base.World.GetOrCreateSystemManaged<BuildingColorSystem>();
-
-                // Initialize UI options from mod settings.
-                displayOption = Mod.ModSettings.DisplayOption;
-                colorOption   = Mod.ModSettings.ColorOption;
-                oneColor      = Mod.ModSettings.OneColor;
+                _nameSystem             = base.World.GetOrCreateSystemManaged<NameSystem>();
+                _resourceSystem         = base.World.GetOrCreateSystemManaged<ResourceSystem>();
+                _toolSystem             = base.World.GetOrCreateSystemManaged<ToolSystem>();
 
                 // Add bindings for C# to UI.
-                AddBinding(_bindingSelectedDistrict = new ValueBinding<Entity>(ModAssemblyInfo.Name, BindingNameSelectedDistrict, EntireCity        ));
+                AddBinding(_bindingSelectedDistrict = new ValueBinding<Entity>(ModAssemblyInfo.Name, BindingNameSelectedDistrict, EntireCity));
                 AddBinding(_bindingDistrictInfos    = new RawValueBinding     (ModAssemblyInfo.Name, BindingNameDistrictInfos,    WriteDistrictInfos));
-                AddBinding(_bindingDisplayOption    = new ValueBinding<int>   (ModAssemblyInfo.Name, BindingNameDisplayOption,    (int)displayOption));
-                AddBinding(_bindingColorOption      = new ValueBinding<int>   (ModAssemblyInfo.Name, BindingNameColorOption,      (int)colorOption  ));
-                AddBinding(_bindingOneColor         = new ValueBinding<Color> (ModAssemblyInfo.Name, BindingNameOneColor,         oneColor          ));
+                AddBinding(_bindingDisplayOption    = new ValueBinding<int>   (ModAssemblyInfo.Name, BindingNameDisplayOption,    (int)Mod.ModSettings.DisplayOption));
+                AddBinding(_bindingColorOption      = new ValueBinding<int>   (ModAssemblyInfo.Name, BindingNameColorOption,      (int)Mod.ModSettings.ColorOption));
+                AddBinding(_bindingOneColor         = new ValueBinding<Color> (ModAssemblyInfo.Name, BindingNameOneColor,         Mod.ModSettings.OneColor));
                 AddBinding(_bindingResourceInfos    = new RawValueBinding     (ModAssemblyInfo.Name, BindingNameResourceInfos,    WriteResourceInfos));
 
                 // Add bindings for UI to C#.
@@ -137,7 +111,7 @@ namespace ResourceLocator
                 Mod.log.Error(ex);
             }
         }
-        
+
         /// <summary>
         /// Write district infos to the UI.
         /// </summary>
@@ -145,48 +119,32 @@ namespace ResourceLocator
         {
             _districtInfos.Write(writer);
         }
-        
+
         /// <summary>
         /// Write resource infos to the UI.
         /// </summary>
         private void WriteResourceInfos(IJsonWriter writer)
         {
-            // Get production and consumption data.
-            // Logic adapted from Game.UI.InGame.ProductionUISystem.UpdateCache().
-		    NativeArray<int> productionData        = _countCompanyDataSystem.GetProduction (out JobHandle deps1);
-		    NativeArray<int> industrialConsumption = _industrialDemandSystem.GetConsumption(out JobHandle deps3);
-		    NativeArray<int> commercialConsumption = _commercialDemandSystem.GetConsumption(out JobHandle deps4);
-		    JobHandle.CompleteAll(ref deps1, ref deps3, ref deps4);
-		    CountCompanyDataSystem.CommercialCompanyDatas commercialCompanyDatas = _countCompanyDataSystem.GetCommercialCompanyDatas(out JobHandle deps2);
-		    deps2.Complete();
-			ResourcePrefabs resourcePrefabs = _resourceSystem.GetPrefabs();
-		    for (int i = 0; i < productionData.Length; i++)
-		    {
-			    if (!base.EntityManager.GetComponentData<ResourceData>(resourcePrefabs[EconomyUtils.GetResource(i)]).m_IsProduceable)
-			    {
-				    productionData[i] = commercialCompanyDatas.m_ProduceCapacity[i];
+            // Get latest storage amounts and company counts.
+            _buildingColorSystem.GetStorageAmountsCompanyCounts(
+                out int[] storageAmountsRequires,
+                out int[] storageAmountsProduces,
+                out int[] storageAmountsSells,
+                out int[] storageAmountsStores,
+                out int[] storageAmountsInTransit,
+                
+                out int[] companyCountsRequires,
+                out int[] companyCountsProduces,
+                out int[] companyCountsSells,
+                out int[] companyCountsStores);
 
-                    // Following resources are not produceable.
-                    // Of these, this mod cares only about Lodging, Meals, Entertainment, and Recreation.
-                    //      Money
-                    //      Meals
-                    //      Lodging
-                    //      UnsortedMail
-                    //      LocalMail
-                    //      OutgoingMail
-                    //      Entertainment
-                    //      Recreation
-                    //      Garbage
-			    }
-		    }
-
-            // Get latest storage amounts.
-            _buildingColorSystem.GetStorageAmounts(
-                out int[] storageRequires,
-                out int[] storageProduces,
-                out int[] storageSells,
-                out int[] storageStores,
-                out int[] storageInTransit);
+            // It is desired to use the same production and surplus data as the Production tab of the Economy view.
+            // The Production tab data comes from the ProductionUISystem.
+            // But ProductionUISystem updates only 32 times per game day, which is one update every 45 game minutes.
+            // Get production and surplus amounts now.
+            // Ignore company productions.
+            // Always write the values, even if not valid.
+            bool productionSurplusValid = ProductionSurplus.GetAmounts(out int[] productionAmounts, out int[] surplusAmounts, out _);
 
             // Define variables to hold maximum of each value.
             int maxStorageRequires  = 0;
@@ -197,10 +155,13 @@ namespace ResourceLocator
 
             int maxProduction       = 0;
             int maxSurplus          = 0;
-            int maxDeficit          = 0;
+
+            // Get resource stuff.
+            ResourcePrefabs resourcePrefabs = _resourceSystem.GetPrefabs();
+            ComponentLookup<ResourceData> componentLookupResourceData = SystemAPI.GetComponentLookup<ResourceData>(true);
 
             // Get resource info for each building type.
-            ResourceInfos resourceInfos = new ResourceInfos();
+            ResourceInfos resourceInfos = new();
             foreach (RLBuildingType buildingType in (RLBuildingType[])Enum.GetValues(typeof(RLBuildingType)))
             {
                 // Skip special cases.
@@ -210,55 +171,63 @@ namespace ResourceLocator
                 }
 
                 // Get resource index for this building type.
-    			Entity resourceEntity = resourcePrefabs[RLBuildingTypeUtils.GetResource(buildingType)];
-		        int resourceIndex = EconomyUtils.GetResourceIndex(EconomyUtils.GetResource(_prefabSystem.GetPrefab<ResourcePrefab>(resourceEntity).m_Resource));
-
-                // Compute production, surplus, and deficit.
-                // Logic adapted from Game.UI.InGame.ProductionUISystem.GetData().
-                int production = productionData[resourceIndex];
-                int consumption = commercialConsumption[resourceIndex] + industrialConsumption[resourceIndex];
-                int minConsumptionProduction = math.min(consumption, production);
-                int surplus = production  - minConsumptionProduction;
-                int deficit = consumption - minConsumptionProduction;
+                Resource resource = RLBuildingTypeUtils.GetResource(buildingType);
+                int resourceIndex = EconomyUtils.GetResourceIndex(resource);
 
                 // Compute max values.
-                maxStorageRequires  = Math.Max(maxStorageRequires,  storageRequires [resourceIndex]);
-                maxStorageProduces  = Math.Max(maxStorageProduces,  storageProduces [resourceIndex]);
-                maxStorageSells     = Math.Max(maxStorageSells,     storageSells    [resourceIndex]);
-                maxStorageStores    = Math.Max(maxStorageStores,    storageStores   [resourceIndex]);
-                maxStorageInTransit = Math.Max(maxStorageInTransit, storageInTransit[resourceIndex]);
-                
-                maxProduction       = Math.Max(maxProduction,       production                     );
-                maxSurplus          = Math.Max(maxSurplus,          surplus                        );
-                maxDeficit          = Math.Max(maxDeficit,          deficit                        );
+                maxStorageRequires  = Math.Max(maxStorageRequires,  storageAmountsRequires  [resourceIndex]);
+                maxStorageProduces  = Math.Max(maxStorageProduces,  storageAmountsProduces  [resourceIndex]);
+                maxStorageSells     = Math.Max(maxStorageSells,     storageAmountsSells     [resourceIndex]);
+                maxStorageStores    = Math.Max(maxStorageStores,    storageAmountsStores    [resourceIndex]);
+                maxStorageInTransit = Math.Max(maxStorageInTransit, storageAmountsInTransit [resourceIndex]);
+
+                maxProduction       = Math.Max(maxProduction,       productionAmounts       [resourceIndex]);
+                maxSurplus          = Math.Max(maxSurplus, Math.Abs(surplusAmounts          [resourceIndex]));
+
+                // Get whether or not building type has weight.
+                bool hasWeight = EconomyUtils.IsResourceHasWeight(resource, resourcePrefabs, ref componentLookupResourceData);
 
                 // Add a new resource info.
-                resourceInfos.Add(new ResourceInfo(
-                    buildingType,
-                    storageRequires [resourceIndex],
-                    storageProduces [resourceIndex],
-                    storageSells    [resourceIndex],
-                    storageStores   [resourceIndex],
-                    storageInTransit[resourceIndex],
-                    production, 
-                    surplus, 
-                    deficit));
+                resourceInfos.Add(new ResourceInfo
+                { 
+                    BuildingType           = buildingType,
+                    StorageAmountRequires  = storageAmountsRequires  [resourceIndex],
+                    StorageAmountProduces  = storageAmountsProduces  [resourceIndex],
+                    StorageAmountSells     = storageAmountsSells     [resourceIndex],
+                    StorageAmountStores    = storageAmountsStores    [resourceIndex],
+                    StorageAmountInTransit = storageAmountsInTransit [resourceIndex],
+                    RateValid              = productionSurplusValid,
+                    RateProduction         = productionAmounts       [resourceIndex],
+                    RateSurplus            = surplusAmounts          [resourceIndex],
+                    CompanyCountRequires   = companyCountsRequires   [resourceIndex],
+                    CompanyCountProduces   = companyCountsProduces   [resourceIndex],
+                    CompanyCountSells      = companyCountsSells      [resourceIndex],
+                    CompanyCountStores     = companyCountsStores     [resourceIndex],
+                    HasWeight              = hasWeight
+                });
             }
 
             // Include the entry for max values.
             // Passing the max values in its own resource info
             // allows the UI logic to quickly obtain the max values from this entry
             // instead of recomputing the max values for every infomode.
-            resourceInfos.Add(new ResourceInfo(
-                RLBuildingType.MaxValues,
-                maxStorageRequires,
-                maxStorageProduces,
-                maxStorageSells,
-                maxStorageStores,
-                maxStorageInTransit,
-                maxProduction, 
-                maxSurplus, 
-                maxDeficit));
+            resourceInfos.Add(new ResourceInfo
+            {
+                BuildingType           = RLBuildingType.MaxValues,
+                StorageAmountRequires  = maxStorageRequires,
+                StorageAmountProduces  = maxStorageProduces,
+                StorageAmountSells     = maxStorageSells,
+                StorageAmountStores    = maxStorageStores,
+                StorageAmountInTransit = maxStorageInTransit,
+                RateValid              = false,
+                RateProduction         = maxProduction, 
+                RateSurplus            = maxSurplus, 
+                CompanyCountRequires   = 0,
+                CompanyCountProduces   = 0,
+                CompanyCountSells      = 0,
+                CompanyCountStores     = 0,
+                HasWeight              = false
+            });
 
             // Write resource infos to the UI.
             resourceInfos.Write(writer);
@@ -271,7 +240,7 @@ namespace ResourceLocator
         {
             // Get district infos and find selected district.
             bool foundSelectedDistrict = (selectedDistrict == EntireCity);
-            DistrictInfos districtInfos = new DistrictInfos();
+            DistrictInfos districtInfos = new();
             NativeArray<Entity> districtEntities = _districtQuery.ToEntityArray(Allocator.Temp);
             foreach (Entity districtEntity in districtEntities)
             {
@@ -350,11 +319,10 @@ namespace ResourceLocator
         private void DisplayOptionClicked(int newDisplayOption)
         {
             // Save the new display option.
-            displayOption = (DisplayOption)newDisplayOption;
-            Mod.ModSettings.DisplayOption = displayOption;
+            Mod.ModSettings.DisplayOption = (DisplayOption)newDisplayOption;
 
             // Immediately send the display option back to the UI.
-            _bindingDisplayOption.Update((int)displayOption);
+            _bindingDisplayOption.Update(newDisplayOption);
         }
 
         /// <summary>
@@ -363,11 +331,10 @@ namespace ResourceLocator
         private void ColorOptionClicked(int newColorOption)
         {
             // Save the new color option.
-            colorOption = (ColorOption)newColorOption;
-            Mod.ModSettings.ColorOption = colorOption;
+            Mod.ModSettings.ColorOption = (ColorOption)newColorOption;
 
             // Immediately send the color option back to the UI.
-            _bindingColorOption.Update((int)colorOption);
+            _bindingColorOption.Update(newColorOption);
 
             // Use the newly selected color option.
             RLInfoviewUtils.SetInfomodeColors();
@@ -380,13 +347,12 @@ namespace ResourceLocator
         private void OneColorChanged(Color newOneColor)
         {
             // Save the new one color.
-            oneColor = newOneColor;
-            Mod.ModSettings.OneColorR = oneColor.r;
-            Mod.ModSettings.OneColorG = oneColor.g;
-            Mod.ModSettings.OneColorB = oneColor.b;
+            Mod.ModSettings.OneColorR = newOneColor.r;
+            Mod.ModSettings.OneColorG = newOneColor.g;
+            Mod.ModSettings.OneColorB = newOneColor.b;
 
             // Immediately send the one color back to the UI.
-            _bindingOneColor.Update(oneColor);
+            _bindingOneColor.Update(newOneColor);
 
             // Use the newly selected one color.
             RLInfoviewUtils.SetInfomodeColors();

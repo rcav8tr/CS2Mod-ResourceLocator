@@ -117,7 +117,4 @@ export class UITranslationKey
     public static Materials                                         : string = "ResourceLocator.Materials";
     public static MaterialGoods                                     : string = "ResourceLocator.MaterialGoods";
     public static ImmaterialGoods                                   : string = "ResourceLocator.ImmaterialGoods";
-
-    // Unit of measure text.
-    public static UnitOfMeasurePrefixKilo                           : string = "ResourceLocator.UnitOfMeasurePrefixKilo";
 }

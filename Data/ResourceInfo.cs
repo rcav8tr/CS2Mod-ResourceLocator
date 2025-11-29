@@ -7,44 +7,29 @@ namespace ResourceLocator
     /// </summary>
     public class ResourceInfo : IJsonWritable
     {
-        // Building type,
+        // Building type.
         public RLBuildingType BuildingType { get; set; }
 
-        // Storage data.
-        public int StorageRequires  { get; set; }
-        public int StorageProduces  { get; set; }
-        public int StorageSells     { get; set; }
-        public int StorageStores    { get; set; }
-        public int StorageInTransit { get; set; }
+        // Storage amount data.
+        public int StorageAmountRequires    { get; set; }
+        public int StorageAmountProduces    { get; set; }
+        public int StorageAmountSells       { get; set; }
+        public int StorageAmountStores      { get; set; }
+        public int StorageAmountInTransit   { get; set; }
 
         // Rate data.
-        public int RateProduction   { get; set; }
-        public int RateSurplus      { get; set; }
-        public int RateDeficit      { get; set; }
+        public bool RateValid               { get; set; }
+        public int RateProduction           { get; set; }
+        public int RateSurplus              { get; set; }
 
-        public ResourceInfo
-        (
-            RLBuildingType buildingType,
-            int storageRequires,
-            int storageProduces,
-            int storageSells,
-            int storageStores,
-            int storageInTransit,
-            int rateProduction,
-            int rateSurplus,
-            int rateDeficit
-        )
-        {
-            BuildingType     = buildingType;
-            StorageRequires  = storageRequires;
-            StorageProduces  = storageProduces;
-            StorageSells     = storageSells;
-            StorageStores    = storageStores;
-            StorageInTransit = storageInTransit;
-            RateProduction   = rateProduction;
-            RateSurplus      = rateSurplus;
-            RateDeficit      = rateDeficit;
-        }
+        // Company count data.
+        public int CompanyCountRequires     { get; set; }
+        public int CompanyCountProduces     { get; set; }
+        public int CompanyCountSells        { get; set; }
+        public int CompanyCountStores       { get; set; }
+
+        // Miscellaneous.
+        public bool HasWeight               { get; set; }
 
         /// <summary>
         /// Write resource info to the UI.
@@ -54,22 +39,32 @@ namespace ResourceLocator
 			writer.TypeBegin(ModAssemblyInfo.Name + ".ResourceInfo");
 			writer.PropertyName("buildingType");
 			writer.Write((int)BuildingType);
-			writer.PropertyName("storageRequires");
-			writer.Write(StorageRequires);
-			writer.PropertyName("storageProduces");
-			writer.Write(StorageProduces);
-			writer.PropertyName("storageSells");
-			writer.Write(StorageSells);
-			writer.PropertyName("storageStores");
-			writer.Write(StorageStores);
-			writer.PropertyName("storageInTransit");
-			writer.Write(StorageInTransit);
+			writer.PropertyName("storageAmountRequires");
+			writer.Write(StorageAmountRequires);
+			writer.PropertyName("storageAmountProduces");
+			writer.Write(StorageAmountProduces);
+			writer.PropertyName("storageAmountSells");
+			writer.Write(StorageAmountSells);
+			writer.PropertyName("storageAmountStores");
+			writer.Write(StorageAmountStores);
+			writer.PropertyName("storageAmountInTransit");
+			writer.Write(StorageAmountInTransit);
+			writer.PropertyName("rateValid");
+			writer.Write(RateValid);
 			writer.PropertyName("rateProduction");
 			writer.Write(RateProduction);
 			writer.PropertyName("rateSurplus");
 			writer.Write(RateSurplus);
-			writer.PropertyName("rateDeficit");
-			writer.Write(RateDeficit);
+			writer.PropertyName("companyCountRequires");
+			writer.Write(CompanyCountRequires);
+			writer.PropertyName("companyCountProduces");
+			writer.Write(CompanyCountProduces);
+			writer.PropertyName("companyCountSells");
+			writer.Write(CompanyCountSells);
+			writer.PropertyName("companyCountStores");
+			writer.Write(CompanyCountStores);
+			writer.PropertyName("hasWeight");
+			writer.Write(HasWeight);
 			writer.TypeEnd();
         }
     }

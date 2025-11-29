@@ -120,9 +120,6 @@ namespace ResourceLocator
         public const string MaterialGoods                                      = "ResourceLocator.MaterialGoods";
         public const string ImmaterialGoods                                    = "ResourceLocator.ImmaterialGoods";
 
-        // Unit of measure text.
-        public const string UnitOfMeasurePrefixKilo                            = "ResourceLocator.UnitOfMeasurePrefixKilo";
-
         // Settings.
         public const string SettingTitle                                       = "Options.SECTION[ResourceLocator.ResourceLocator.Mod]";
         public const string SettingGroupInclude                                = "Options.GROUP[ResourceLocator.ResourceLocator.Mod.Include]";
