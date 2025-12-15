@@ -16,8 +16,8 @@ export const Heading = ({ buildingType }: HeadingProps) =>
     // Get translation for heading text.
     const { translate } = useLocalization();
     const headingText: string = "" + (
-        buildingType === RLBuildingType.HeadingMaterials       ? translate(UITranslationKey.Materials      ) :
-        buildingType === RLBuildingType.HeadingMaterialGoods   ? translate(UITranslationKey.MaterialGoods  ) :
+        buildingType === RLBuildingType.HeadingRawMaterials    ? translate(UITranslationKey.RawMaterials   ) :
+        buildingType === RLBuildingType.HeadingProcessedGoods  ? translate(UITranslationKey.ProcessedGoods ) :
         buildingType === RLBuildingType.HeadingImmaterialGoods ? translate(UITranslationKey.ImmaterialGoods) :
         "Unhandled heading type.");
 

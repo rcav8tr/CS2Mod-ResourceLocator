@@ -116,8 +116,8 @@ namespace ResourceLocator
         public const string SelectDeselectTooltip                              = "ResourceLocator.SelectDeselectTooltip";
 
         // Resource category text.
-        public const string Materials                                          = "ResourceLocator.Materials";
-        public const string MaterialGoods                                      = "ResourceLocator.MaterialGoods";
+        public const string RawMaterials                                       = "ResourceLocator.RawMaterials";
+        public const string ProcessedGoods                                     = "ResourceLocator.ProcessedGoods";
         public const string ImmaterialGoods                                    = "ResourceLocator.ImmaterialGoods";
 
         // Settings.

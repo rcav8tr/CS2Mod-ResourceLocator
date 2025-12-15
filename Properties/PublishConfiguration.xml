@@ -122,7 +122,7 @@ The special case buildings are:
 See **Options** for whether or not special case buildings are included.
 
 ### Excluded Buildings
-Abandoned, condemned, deleted, and destroyed buildings are excluded.
+Abandoned, condemned, deleted, destroyed, and outside connection are excluded.
 
 ### Cargo Vehicles
 - Vehicle color is set only for cargo vehicles, not for any other vehicles.
@@ -196,10 +196,10 @@ The following mods were used extensively in the development of this mod:
     <ForumLink Value="https://forum.paradoxplaza.com/forum/threads/resource-locator.1725428/" />
 
     <!-- Version of the mod.  Copied from assembly Version. -->
-    <ModVersion Value="2.1.0" />
+    <ModVersion Value="2.1.1" />
 
     <!-- Recommended version of the base game to use the mod. -->
-    <GameVersion Value="1.4.2*" />
+    <GameVersion Value="1.5.3*" />
 
     <!-- Dependency for the mod.  Can be set multiple times. -->
     <Dependency Id="" />
@@ -210,10 +210,8 @@ The following mods were used extensively in the development of this mod:
 
     <!-- Change log.  Copied from ChangeLog.md file.  Supports minimal markdown subset. -->
     <ChangeLog>
-- Update to handle ports, oil drilling, fish extractors, and storage yards.
-- Get correct production, surplus, and deficit amounts.
-- Cargo vehicles traveling between two outside connections are excluded.
-- Display the number of companies that require, produce, sell, or store each resource.
+- Update for Skyscrapers DLC.
+- Update resource section headings.
 </ChangeLog>
 
     <!-- External links.  Can be set multiple times. -->

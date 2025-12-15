@@ -10,7 +10,6 @@ using Game.Objects;
 using Game.Prefabs;
 using Game.Rendering;
 using Game.Tools;
-using Game.UI.InGame;
 using Game.Vehicles;
 using HarmonyLib;
 using System;
@@ -348,6 +347,7 @@ namespace ResourceLocator
             public ComponentTypeHandle<Color> ComponentTypeHandleColor;
 
             // Buffer lookups.
+            [ReadOnly] public BufferLookup<InstalledUpgrade             > BufferLookupInstalledUpgrade;
             [ReadOnly] public BufferLookup<Renter                       > BufferLookupRenter;
             [ReadOnly] public BufferLookup<Resources                    > BufferLookupResources;
 
@@ -355,7 +355,9 @@ namespace ResourceLocator
             [ReadOnly] public ComponentLookup<BuildingData              > ComponentLookupBuildingData;
             [ReadOnly] public ComponentLookup<BuildingPropertyData      > ComponentLookupBuildingPropertyData;
             [ReadOnly] public ComponentLookup<CompanyData               > ComponentLookupCompanyData;
+            [ReadOnly] public ComponentLookup<EmergencyShelterData      > ComponentLookupEmergencyShelterData;
             [ReadOnly] public ComponentLookup<ExtractorCompany          > ComponentLookupExtractorCompany;
+            [ReadOnly] public ComponentLookup<HospitalData              > ComponentLookupHospitalData;
             [ReadOnly] public ComponentLookup<IndustrialProcessData     > ComponentLookupIndustrialProcessData;
             [ReadOnly] public ComponentLookup<PrefabRef                 > ComponentLookupPrefabRef;
             [ReadOnly] public ComponentLookup<ProcessingCompany         > ComponentLookupProcessingCompany;
@@ -363,20 +365,17 @@ namespace ResourceLocator
             [ReadOnly] public ComponentLookup<StorageCompany            > ComponentLookupStorageCompany;
             [ReadOnly] public ComponentLookup<StorageCompanyData        > ComponentLookupStorageCompanyData;
 
-            // Component type handles for buildings.
+            // Component type handles for special case buildings.
             [ReadOnly] public ComponentTypeHandle<CargoTransportStation > ComponentTypeHandleCargoTransportStation;
-            [ReadOnly] public ComponentTypeHandle<CommercialProperty    > ComponentTypeHandleCommercialProperty;
             [ReadOnly] public ComponentTypeHandle<ElectricityProducer   > ComponentTypeHandleElectricityProducer;
             [ReadOnly] public ComponentTypeHandle<EmergencyShelter      > ComponentTypeHandleEmergencyShelter;
             [ReadOnly] public ComponentTypeHandle<GarbageFacility       > ComponentTypeHandleGarbageFacility;
             [ReadOnly] public ComponentTypeHandle<Hospital              > ComponentTypeHandleHospital;
-            [ReadOnly] public ComponentTypeHandle<IndustrialProperty    > ComponentTypeHandleIndustrialProperty;
             [ReadOnly] public ComponentTypeHandle<ResourceProducer      > ComponentTypeHandleResourceProducer;
 
             // Component type handles for miscellaneous.
             [ReadOnly] public ComponentTypeHandle<CurrentDistrict       > ComponentTypeHandleCurrentDistrict;
             [ReadOnly] public ComponentTypeHandle<Destroyed             > ComponentTypeHandleDestroyed;
-            [ReadOnly] public ComponentTypeHandle<OutsideConnection     > ComponentTypeHandleOutsideConnection;
             [ReadOnly] public ComponentTypeHandle<PrefabRef             > ComponentTypeHandlePrefabRef;
             [ReadOnly] public ComponentTypeHandle<UnderConstruction     > ComponentTypeHandleUnderConstruction;
 
@@ -423,17 +422,6 @@ namespace ResourceLocator
                 // Get colors to set.
                 NativeArray<Color> colors = chunk.GetNativeArray(ref ComponentTypeHandleColor);
 
-                // Get whether or not the property type is valid for this mod.
-                // This is used below to quickly skip the lengthy building color logic for property types this mod does not care about.
-                bool propertyTypeIsValid =
-                    chunk.Has(ref ComponentTypeHandleCargoTransportStation  ) ||
-                    chunk.Has(ref ComponentTypeHandleCommercialProperty     ) || 
-                    chunk.Has(ref ComponentTypeHandleElectricityProducer    ) ||
-                    chunk.Has(ref ComponentTypeHandleEmergencyShelter       ) ||
-                    chunk.Has(ref ComponentTypeHandleGarbageFacility        ) ||
-                    chunk.Has(ref ComponentTypeHandleHospital               ) ||
-                    chunk.Has(ref ComponentTypeHandleIndustrialProperty     );      // For both industrial and office.
-                
                 // Get arrays from the chunk.
                 NativeArray<Entity           > entities           = chunk.GetNativeArray(EntityTypeHandle);
                 NativeArray<PrefabRef        > prefabRefs         = chunk.GetNativeArray(ref ComponentTypeHandlePrefabRef);
@@ -444,48 +432,91 @@ namespace ResourceLocator
                 // Do each entity (i.e. building).
                 for (int i = 0; i < entities.Length; i++)
                 {
-                    // Property type must be valid for this mod.
-                    if (propertyTypeIsValid)
+                    // Get building entity and prefab.
+                    Entity buildingEntity = entities[i];
+                    Entity buildingPrefab = prefabRefs[i].m_Prefab;
+
+                    // Building must be in selected district.
+                    if (SelectedDistrictIsEntireCity ||
+                        (currentDistricts.IsCreated && currentDistricts.Length > 0 && currentDistricts[i].m_District == SelectedDistrict))
                     {
-                        // Building must be in selected district.
-                        if (SelectedDistrictIsEntireCity ||
-                            (currentDistricts.IsCreated && currentDistricts.Length > 0 && currentDistricts[i].m_District == SelectedDistrict))
+                        // A building can be a special case and have a company.
+                        // Do special case logic first so if building also has a company then the company defines the color of the building.
+                        SetBuildingColorSpecialCase(in chunk, buildingEntity, buildingPrefab, ref colors, i);
+
+                        // Set building color for a company, if any.
+                        if (BuildingHasCompany(buildingEntity, buildingPrefab, out Entity companyEntity))
                         {
-                            // Get building's company, if any.
-                            if (CompanyUIUtils.HasCompany(
-                                entities[i],
-                                prefabRefs[i].m_Prefab,
-                                ref BufferLookupRenter,
-                                ref ComponentLookupBuildingPropertyData,
-                                ref ComponentLookupCompanyData,
-                                out Entity companyEntity))
-                            {
-                                // Building has a company.
-                                // Set building color for a company building.
-                                SetBuildingColorCompany(companyEntity, ref colors, i);
-                            }
-                            else
-                            {
-                                // Building has no company.
-                                // Set building color for a special case building.
-                                SetBuildingColorSpecialCase(in chunk, entities[i], ref colors, i);
-                            }
+                            SetBuildingColorCompany(companyEntity, ref colors, i);
                         }
                     }
 
                     // Check if should set SubColor flag on the color.
                     // Logic adapted from Game.Rendering.ObjectColorSystem.CheckColors().
-                    if ((ComponentLookupBuildingData[prefabRefs[i].m_Prefab].m_Flags & BuildingFlags.ColorizeLot) != 0 ||
+                    if ((ComponentLookupBuildingData[buildingPrefab].m_Flags & BuildingFlags.ColorizeLot) != 0 ||
                         (CollectionUtils.TryGet(destroyeds, i, out Destroyed destroyed) && destroyed.m_Cleared >= 0f) ||
                         (CollectionUtils.TryGet(underConstructions, i, out UnderConstruction underConstruction) && underConstruction.m_NewPrefab == Entity.Null))
                     {
                         // Set SubColor flag on the color.
-                        // Not sure what the SubColor flag does.
+                        // When SubColor flag is set, the lot that the building sits on is colorized.
                         Color color = colors[i];
                         color.m_SubColor = true;
                         colors[i] = color;
                     }
                 }
+            }
+
+            /// <summary>
+            /// Get whether or not there is a company at the building or its installed upgrades.
+            /// </summary>
+            private bool BuildingHasCompany(Entity buildingEntity, Entity buildingPrefab, out Entity companyEntity)
+            {
+                // Initialize.
+                companyEntity = Entity.Null;
+
+                // Building must have a renter buffer.
+                // Building must allow sold, manufactured, or stored resources.
+                // Logic adapted from Game.UI.InGame.CompanyUIUtils.HasCompany().
+                if (BufferLookupRenter.TryGetBuffer(buildingEntity, out DynamicBuffer<Renter> bufferRenters) &&
+                    ComponentLookupBuildingPropertyData.TryGetComponent(buildingPrefab, out BuildingPropertyData buildingPropertyData) &&
+                    (buildingPropertyData.m_AllowedSold         != Resource.NoResource ||
+                     buildingPropertyData.m_AllowedManufactured != Resource.NoResource ||
+                     buildingPropertyData.m_AllowedStored       != Resource.NoResource))
+                {
+                    // Find and return the renter that has company data, if any.
+                    for (int i = 0; i < bufferRenters.Length; i++)
+                    {
+                        if (ComponentLookupCompanyData.HasComponent(bufferRenters[i].m_Renter))
+                        {
+                            companyEntity = bufferRenters[i].m_Renter;
+                            return true;
+                        }
+                    }
+                }
+
+                // No company at the building.
+                // Get installed upgrades, if any.
+                if (BufferLookupInstalledUpgrade.TryGetBuffer(buildingEntity, out DynamicBuffer<InstalledUpgrade> bufferInstalledUpgrades))
+                {
+                    // Do each installed upgrade.
+                    for (int i = 0; i < bufferInstalledUpgrades.Length; i++)
+                    {
+                        // Get entity and prefab of installed upgrade.
+                        Entity upgradeEntity = bufferInstalledUpgrades[i].m_Upgrade;
+                        if (ComponentLookupPrefabRef.TryGetComponent(upgradeEntity, out PrefabRef upgradePrefabRef))
+                        {
+                            // Check if the installed upgrade has a company.
+                            // This is a RECURSIVE call.
+                            if (BuildingHasCompany(upgradeEntity, upgradePrefabRef.m_Prefab, out companyEntity))
+                            {
+                                return true;
+                            }    
+                        }
+                    }
+                }
+
+                // Company not found.
+                return false;
             }
 
             /// <summary>
@@ -512,7 +543,7 @@ namespace ResourceLocator
                     Resource resourceInput2 = companyIndustrialProcessData.m_Input2.m_Resource;
                     Resource resourceOutput = companyIndustrialProcessData.m_Output.m_Resource;
                             
-                    // A company with service available might require resources but always sells.
+                    // A company with service available (i.e. commercial) might require resources but always sells.
                     if (ComponentLookupServiceAvailable.HasComponent(companyEntity))
                     {
                         // Check if building requires input 1 or 2 resources.
@@ -533,7 +564,7 @@ namespace ResourceLocator
                     else if (ComponentLookupProcessingCompany.HasComponent(companyEntity))
                     {
                         // Every extractor company is also a processing company.
-                        // But not every processing company is an extrator company.
+                        // But not every processing company is an extractor company.
                         // Only a non-extractor company requires resources.
                         if (!ComponentLookupExtractorCompany.HasComponent(companyEntity))
                         {
@@ -589,14 +620,8 @@ namespace ResourceLocator
             /// <summary>
             /// Set building color for special case buildings.
             /// </summary>
-            private void SetBuildingColorSpecialCase(in ArchetypeChunk chunk, Entity entity, ref NativeArray<Color> colors, int colorsIndex)
+            private void SetBuildingColorSpecialCase(in ArchetypeChunk chunk, Entity entity, Entity prefab, ref NativeArray<Color> colors, int colorsIndex)
             {
-                // Building must not be an outside connection.
-                if (chunk.Has(ref ComponentTypeHandleOutsideConnection))
-                {
-                    return;
-                }
-
                 // Building must have a resources buffer that can be checked.
                 if (!BufferLookupResources.TryGetBuffer(entity, out DynamicBuffer<Resources> bufferResources))
                 {
@@ -669,7 +694,48 @@ namespace ResourceLocator
                 if (chunk.Has(ref ComponentTypeHandleHospital))
                 {
                     // Check if medical facility is included.
-                    if (IncludeMedicalFacility) { SetBuildingColorForStores(ref colors, colorsIndex, bufferResources, Resource.Pharmaceuticals); }
+                    if (IncludeMedicalFacility)
+                    {
+                        // Ordinary hospitals have Hospital and HospitalData with patient capacity.
+                        // A main building with an available hospital upgrade will have Hospital and HospitalData
+                        // but with no patient capacity and only the upgrade has patient capacity.
+                        // Such a building is a hospital only if the upgrade is installed.
+                        // So need to check both main building and installed upgrades for patient capacity.
+
+                        // Check if building prefab has patient capacity.
+                        bool hasCapacity = false;
+                        if (ComponentLookupHospitalData.TryGetComponent(prefab, out HospitalData hospitalData) &&
+                            hospitalData.m_PatientCapacity > 0)
+                        {
+                            hasCapacity = true;
+                        }
+                        else
+                        {
+                            // Do each installed upgrade.
+                            if (BufferLookupInstalledUpgrade.TryGetBuffer(entity, out DynamicBuffer<InstalledUpgrade> installedUpgradeBuffer))
+                            {
+                                for (int i = 0; i < installedUpgradeBuffer.Length; i++)
+                                {
+                                    // Check if installed upgrade prefab has patient capacity.
+                                    if (ComponentLookupPrefabRef.TryGetComponent(installedUpgradeBuffer[i].m_Upgrade, out PrefabRef upgradePrefabRef) &&
+                                        ComponentLookupHospitalData.TryGetComponent(upgradePrefabRef.m_Prefab, out hospitalData) &&
+                                        hospitalData.m_PatientCapacity > 0)
+                                    {
+                                        hasCapacity = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        // If building or upgrade has capacity, set building color for storing Pharmaceuticals.
+                        if (hasCapacity)
+                        {
+                            SetBuildingColorForStores(ref colors, colorsIndex, bufferResources, Resource.Pharmaceuticals);
+                        }
+                    }
+
+                    // Found hospital. No need to check buildings further.
                     return;
                 }
 
@@ -677,7 +743,48 @@ namespace ResourceLocator
                 if (chunk.Has(ref ComponentTypeHandleEmergencyShelter))
                 {
                     // Check if emergency shelter is included.
-                    if (IncludeEmeregencyShelter) { SetBuildingColorForStores(ref colors, colorsIndex, bufferResources, Resource.Food); }
+                    if (IncludeEmeregencyShelter)
+                    {
+                        // Ordinary emergency shelters have EmergencyShelter and EmergencyShelterData with shelter capacity.
+                        // A main building with an available emergency shelter upgrade will have EmergencyShelter and EmergencyShelterData
+                        // but with no shelter capacity and only the upgrade has shelter capacity.
+                        // Such a building is an emergency shelter only if the upgrade is installed.
+                        // So need to check both main building and installed upgrades for shelter capacity.
+
+                        // Check if building prefab has shelter capacity.
+                        bool hasCapacity = false;
+                        if (ComponentLookupEmergencyShelterData.TryGetComponent(prefab, out EmergencyShelterData emergencyShelterData) &&
+                            emergencyShelterData.m_ShelterCapacity > 0)
+                        {
+                            hasCapacity = true;
+                        }
+                        else
+                        {
+                            // Do each installed upgrade.
+                            if (BufferLookupInstalledUpgrade.TryGetBuffer(entity, out DynamicBuffer<InstalledUpgrade> installedUpgradeBuffer))
+                            {
+                                for (int i = 0; i < installedUpgradeBuffer.Length; i++)
+                                {
+                                    // Check if installed upgrade prefab has shelter capacity.
+                                    if (ComponentLookupPrefabRef.TryGetComponent(installedUpgradeBuffer[i].m_Upgrade, out PrefabRef upgradePrefabRef) &&
+                                        ComponentLookupEmergencyShelterData.TryGetComponent(upgradePrefabRef.m_Prefab, out emergencyShelterData) &&
+                                        emergencyShelterData.m_ShelterCapacity > 0)
+                                    {
+                                        hasCapacity = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        // If building or upgrade has capacity, set building color for storing Food.
+                        if (hasCapacity)
+                        {
+                            SetBuildingColorForStores(ref colors, colorsIndex, bufferResources, Resource.Food);
+                        }
+                    }
+
+                    // Found emergency shelter. No need to check buildings further.
                     return;
                 }
 
@@ -917,7 +1024,7 @@ namespace ResourceLocator
                 // Do each entity.
                 NativeArray<Owner    > owners     = chunk.GetNativeArray(ref ComponentTypeHandleOwner);
                 NativeArray<PrefabRef> prefabRefs = chunk.GetNativeArray(ref ComponentTypeHandlePrefabRef);
-                NativeArray<Entity> entities = chunk.GetNativeArray(EntityTypeHandle);
+                NativeArray<Entity   > entities   = chunk.GetNativeArray(EntityTypeHandle);
                 for (int i = 0; i < entities.Length; i++)
                 {
                     // Get the entity and owner for this building.
@@ -1289,13 +1396,14 @@ namespace ResourceLocator
                         // Do not exclude hidden buildings because they must be included in the storage data.
 				        //ComponentType.ReadOnly<Hidden>(),
 
-                        ComponentType.ReadOnly<Abandoned>(),    // Exclude abandoned buildings. 
-                        ComponentType.ReadOnly<Condemned>(),    // Exclude condemned buildings.
-				        ComponentType.ReadOnly<Deleted>(),      // Exclude deleted   buildings.
-                        ComponentType.ReadOnly<Destroyed>(),    // Exclude destroyed buildings.
-				        ComponentType.ReadOnly<Owner>(),        // Exclude subbuildings (see middle buildings query below).
-                        ComponentType.ReadOnly<Attachment>(),   // Exclude attachments  (see attachments    query below).
-				        ComponentType.ReadOnly<Temp>(),         // Exclude temp         (see temp objects   query below).
+                        ComponentType.ReadOnly<Abandoned>(),            // Exclude abandoned buildings. 
+                        ComponentType.ReadOnly<Condemned>(),            // Exclude condemned buildings.
+				        ComponentType.ReadOnly<Deleted>(),              // Exclude deleted   buildings.
+                        ComponentType.ReadOnly<Destroyed>(),            // Exclude destroyed buildings.
+                        ComponentType.ReadOnly<OutsideConnection>(),    // Exclude outside connections.
+				        ComponentType.ReadOnly<Owner>(),                // Exclude subbuildings (see middle buildings query below).
+                        ComponentType.ReadOnly<Attachment>(),           // Exclude attachments  (see attachments      query below).
+				        ComponentType.ReadOnly<Temp>(),                 // Exclude temp         (see temp objects     query below).
 			        }
 		        }
             );
@@ -1562,13 +1670,16 @@ namespace ResourceLocator
             {
                 ComponentTypeHandleColor                    = SystemAPI.GetComponentTypeHandle<Color>(false),
 
+                BufferLookupInstalledUpgrade                = SystemAPI.GetBufferLookup<InstalledUpgrade                >(true),
                 BufferLookupRenter                          = SystemAPI.GetBufferLookup<Renter                          >(true),
                 BufferLookupResources                       = SystemAPI.GetBufferLookup<Resources                       >(true),
                 
                 ComponentLookupBuildingData                 = SystemAPI.GetComponentLookup<BuildingData                 >(true),
                 ComponentLookupBuildingPropertyData         = SystemAPI.GetComponentLookup<BuildingPropertyData         >(true),
                 ComponentLookupCompanyData                  = SystemAPI.GetComponentLookup<CompanyData                  >(true),
+                ComponentLookupEmergencyShelterData         = SystemAPI.GetComponentLookup<EmergencyShelterData         >(true),
                 ComponentLookupExtractorCompany             = SystemAPI.GetComponentLookup<ExtractorCompany             >(true),
+                ComponentLookupHospitalData                 = SystemAPI.GetComponentLookup<HospitalData                 >(true),
                 ComponentLookupIndustrialProcessData        = SystemAPI.GetComponentLookup<IndustrialProcessData        >(true),
                 ComponentLookupPrefabRef                    = SystemAPI.GetComponentLookup<PrefabRef                    >(true),
                 ComponentLookupProcessingCompany            = SystemAPI.GetComponentLookup<ProcessingCompany            >(true),
@@ -1577,17 +1688,14 @@ namespace ResourceLocator
                 ComponentLookupStorageCompanyData           = SystemAPI.GetComponentLookup<StorageCompanyData           >(true),
                 
                 ComponentTypeHandleCargoTransportStation    = SystemAPI.GetComponentTypeHandle<CargoTransportStation    >(true),
-                ComponentTypeHandleCommercialProperty       = SystemAPI.GetComponentTypeHandle<CommercialProperty       >(true),
                 ComponentTypeHandleElectricityProducer      = SystemAPI.GetComponentTypeHandle<ElectricityProducer      >(true),
                 ComponentTypeHandleEmergencyShelter         = SystemAPI.GetComponentTypeHandle<EmergencyShelter         >(true),
                 ComponentTypeHandleGarbageFacility          = SystemAPI.GetComponentTypeHandle<GarbageFacility          >(true),
                 ComponentTypeHandleHospital                 = SystemAPI.GetComponentTypeHandle<Hospital                 >(true),
-                ComponentTypeHandleIndustrialProperty       = SystemAPI.GetComponentTypeHandle<IndustrialProperty       >(true),
                 ComponentTypeHandleResourceProducer         = SystemAPI.GetComponentTypeHandle<ResourceProducer         >(true),
 
                 ComponentTypeHandleCurrentDistrict          = SystemAPI.GetComponentTypeHandle<CurrentDistrict          >(true),
                 ComponentTypeHandleDestroyed                = SystemAPI.GetComponentTypeHandle<Destroyed                >(true),
-                ComponentTypeHandleOutsideConnection        = SystemAPI.GetComponentTypeHandle<OutsideConnection        >(true),
                 ComponentTypeHandlePrefabRef                = SystemAPI.GetComponentTypeHandle<PrefabRef                >(true),
                 ComponentTypeHandleUnderConstruction        = SystemAPI.GetComponentTypeHandle<UnderConstruction        >(true),
                 
@@ -1693,7 +1801,7 @@ namespace ResourceLocator
 
             // Wait for the cargo vehicle and main building jobs to complete before accessing storage data.
             JobHandle.CompleteAll(ref jobHandleCargoVehicle, ref jobHandleMainBuilding);
-            
+
             // Note that the subsequent jobs could still be executing at this point, which is okay.
 
             // Lock the thread while writing totals.

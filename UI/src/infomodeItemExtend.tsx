@@ -36,8 +36,8 @@ export const InfomodeItemExtend: ModuleRegistryExtend = (Component: any) =>
             if (buildingType === RLBuildingType.MaxValues     ) { return (<></>               ); }
 
             // Check for special case for headings.
-            if (buildingType === RLBuildingType.HeadingMaterials      ||
-                buildingType === RLBuildingType.HeadingMaterialGoods  ||
+            if (buildingType === RLBuildingType.HeadingRawMaterials   ||
+                buildingType === RLBuildingType.HeadingProcessedGoods ||
                 buildingType === RLBuildingType.HeadingImmaterialGoods)
             {
                 return (<Heading buildingType={buildingType} />);

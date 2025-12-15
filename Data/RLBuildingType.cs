@@ -14,7 +14,7 @@
         ColorOption,
         SelectDeselect,
 
-        HeadingMaterials,
+        HeadingRawMaterials,
         Wood,
         Grain,
         Livestock,
@@ -26,7 +26,7 @@
         Coal,
         Stone,
 
-        HeadingMaterialGoods,
+        HeadingProcessedGoods,
         Metals,
         Steel,
         Minerals,

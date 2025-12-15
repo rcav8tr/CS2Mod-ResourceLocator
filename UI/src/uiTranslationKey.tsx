@@ -114,7 +114,7 @@ export class UITranslationKey
     public static SelectDeselectTooltip                             : string = "ResourceLocator.SelectDeselectTooltip";
 
     // Resource category text.
-    public static Materials                                         : string = "ResourceLocator.Materials";
-    public static MaterialGoods                                     : string = "ResourceLocator.MaterialGoods";
+    public static RawMaterials                                      : string = "ResourceLocator.RawMaterials";
+    public static ProcessedGoods                                    : string = "ResourceLocator.ProcessedGoods";
     public static ImmaterialGoods                                   : string = "ResourceLocator.ImmaterialGoods";
 }

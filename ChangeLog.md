@@ -1,4 +1,2 @@
-﻿- Update to handle ports, oil drilling, fish extractors, and storage yards.
-- Get correct production, surplus, and deficit amounts.
-- Cargo vehicles traveling between two outside connections are excluded.
-- Display the number of companies that require, produce, sell, or store each resource.
+﻿- Update for Skyscrapers DLC.
+- Update resource section headings.

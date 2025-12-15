@@ -72,7 +72,7 @@ namespace ResourceLocator
                 //    {
                 //        //if (keyValue.Value.ToLower().Contains("companies"))
                 //        //if (keyValue.Value.StartsWith("Cargo"))
-                //        if (keyValue.Value.ToLower() == "parks & recreation")
+                //        if (keyValue.Value.ToLower() == "raw materials" || keyValue.Value.ToLower() == "processed goods")
                 //        {
                 //            log.Info(keyValue.Key + "\t" + keyValue.Value);
                 //        }

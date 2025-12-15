@@ -225,7 +225,7 @@ namespace ResourceLocator
             sb.Append(GetTranslationsContent(csFile, "Select/deselect text.", selectDeselectText));
 
             // Include resource category text.
-            TranslationKeys resourceCategoryText = new TranslationKeys() { "Materials", "MaterialGoods", "ImmaterialGoods", };
+            TranslationKeys resourceCategoryText = new TranslationKeys() { "RawMaterials", "ProcessedGoods", "ImmaterialGoods", };
             sb.AppendLine();
             sb.Append(GetTranslationsContent(csFile, "Resource category text.", resourceCategoryText));
 

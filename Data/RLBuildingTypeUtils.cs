@@ -18,8 +18,8 @@ namespace ResourceLocator
                 buildingType == RLBuildingType.DisplayOption            ||
                 buildingType == RLBuildingType.ColorOption              ||
                 buildingType == RLBuildingType.SelectDeselect           ||
-                buildingType == RLBuildingType.HeadingMaterials         ||
-                buildingType == RLBuildingType.HeadingMaterialGoods     ||
+                buildingType == RLBuildingType.HeadingRawMaterials      ||
+                buildingType == RLBuildingType.HeadingProcessedGoods    ||
                 buildingType == RLBuildingType.HeadingImmaterialGoods   ||
                 buildingType == RLBuildingType.MaxValues;
         }

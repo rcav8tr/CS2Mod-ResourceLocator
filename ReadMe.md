@@ -106,7 +106,7 @@ The special case buildings are:
 See **Options** for whether or not special case buildings are included.
 
 ### Excluded Buildings
-Abandoned, condemned, deleted, and destroyed buildings are excluded.
+Abandoned, condemned, deleted, destroyed, and outside connection are excluded.
 
 ### Cargo Vehicles
 - Vehicle color is set only for cargo vehicles, not for any other vehicles.
