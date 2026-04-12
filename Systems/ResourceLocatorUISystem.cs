@@ -1,6 +1,10 @@
-﻿using Colossal.Serialization.Entities;
+﻿using Colossal.Entities;
+using Colossal.Serialization.Entities;
 using Colossal.UI.Binding;
 using Game.Areas;
+using Game.Buildings;
+using Game.Common;
+using Game.Companies;
 using Game.Economy;
 using Game.Prefabs;
 using Game.Tools;
@@ -21,6 +25,7 @@ namespace ResourceLocator
         Produces,
         Sells,
         Stores,
+        Unnecessary,
     }
 
     // Define color options.
@@ -49,6 +54,7 @@ namespace ResourceLocator
         public const string BindingNameSelectedDistrict = "SelectedDistrict";
         public const string BindingNameDistrictInfos    = "DistrictInfos";
         public const string BindingNameDisplayOption    = "DisplayOption";
+        public const string BindingNameHasUnnecessary   = "HasUnnecessary";
         public const string BindingNameColorOption      = "ColorOption";
         public const string BindingNameOneColor         = "OneColor";
         public const string BindingNameResourceInfos    = "ResourceInfos";
@@ -57,6 +63,7 @@ namespace ResourceLocator
         private ValueBinding<Entity>    _bindingSelectedDistrict;
         private RawValueBinding         _bindingDistrictInfos;
         private ValueBinding<int>       _bindingDisplayOption;
+        private ValueBinding<bool>      _bindingHasUnnecessary;
         private ValueBinding<int>       _bindingColorOption;
         private ValueBinding<Color>     _bindingOneColor;
         private RawValueBinding         _bindingResourceInfos;
@@ -64,6 +71,7 @@ namespace ResourceLocator
         // UI to C# event names.
         public const string EventNameSelectedDistrictChanged    = "SelectedDistrictChanged";
         public const string EventNameDisplayOptionClicked       = "DisplayOptionClicked";
+        public const string EventNameRemoveUnnecessaryClicked   = "RemoveUnnecessaryClicked";
         public const string EventNameColorOptionClicked         = "ColorOptionClicked";
         public const string EventNameOneColorChanged            = "OneColorChanged";
 
@@ -71,7 +79,7 @@ namespace ResourceLocator
         private EntityQuery _districtQuery;
         private DistrictInfos _districtInfos = new();
         public static Entity EntireCity { get; } = Entity.Null;
-        public Entity selectedDistrict { get; set; } = EntireCity;
+        public Entity SelectedDistrict { get; set; } = EntireCity;
 
         /// <summary>
         /// Do one-time initialization of the system.
@@ -93,15 +101,17 @@ namespace ResourceLocator
                 AddBinding(_bindingSelectedDistrict = new ValueBinding<Entity>(ModAssemblyInfo.Name, BindingNameSelectedDistrict, EntireCity));
                 AddBinding(_bindingDistrictInfos    = new RawValueBinding     (ModAssemblyInfo.Name, BindingNameDistrictInfos,    WriteDistrictInfos));
                 AddBinding(_bindingDisplayOption    = new ValueBinding<int>   (ModAssemblyInfo.Name, BindingNameDisplayOption,    (int)Mod.ModSettings.DisplayOption));
+                AddBinding(_bindingHasUnnecessary   = new ValueBinding<bool>  (ModAssemblyInfo.Name, BindingNameHasUnnecessary,   false));
                 AddBinding(_bindingColorOption      = new ValueBinding<int>   (ModAssemblyInfo.Name, BindingNameColorOption,      (int)Mod.ModSettings.ColorOption));
                 AddBinding(_bindingOneColor         = new ValueBinding<Color> (ModAssemblyInfo.Name, BindingNameOneColor,         Mod.ModSettings.OneColor));
                 AddBinding(_bindingResourceInfos    = new RawValueBinding     (ModAssemblyInfo.Name, BindingNameResourceInfos,    WriteResourceInfos));
 
                 // Add bindings for UI to C#.
-                AddBinding(new TriggerBinding<Entity>(ModAssemblyInfo.Name, EventNameSelectedDistrictChanged,   SelectedDistrictChanged));
-                AddBinding(new TriggerBinding<int   >(ModAssemblyInfo.Name, EventNameDisplayOptionClicked,      DisplayOptionClicked   ));
-                AddBinding(new TriggerBinding<int   >(ModAssemblyInfo.Name, EventNameColorOptionClicked,        ColorOptionClicked     ));
-                AddBinding(new TriggerBinding<Color >(ModAssemblyInfo.Name, EventNameOneColorChanged,           OneColorChanged        ));
+                AddBinding(new TriggerBinding<Entity>(ModAssemblyInfo.Name, EventNameSelectedDistrictChanged,   SelectedDistrictChanged ));
+                AddBinding(new TriggerBinding<int   >(ModAssemblyInfo.Name, EventNameDisplayOptionClicked,      DisplayOptionClicked    ));
+                AddBinding(new TriggerBinding        (ModAssemblyInfo.Name, EventNameRemoveUnnecessaryClicked,  RemoveUnnecessaryClicked));
+                AddBinding(new TriggerBinding<int   >(ModAssemblyInfo.Name, EventNameColorOptionClicked,        ColorOptionClicked      ));
+                AddBinding(new TriggerBinding<Color >(ModAssemblyInfo.Name, EventNameOneColorChanged,           OneColorChanged         ));
 
                 // Define entity query to get districts.
                 _districtQuery = GetEntityQuery(ComponentType.ReadOnly<District>());
@@ -131,12 +141,14 @@ namespace ResourceLocator
                 out int[] storageAmountsProduces,
                 out int[] storageAmountsSells,
                 out int[] storageAmountsStores,
+                out int[] storageAmountsUnnecessary,
                 out int[] storageAmountsInTransit,
                 
                 out int[] companyCountsRequires,
                 out int[] companyCountsProduces,
                 out int[] companyCountsSells,
-                out int[] companyCountsStores);
+                out int[] companyCountsStores,
+                out int[] companyCountsUnnecessary);
 
             // It is desired to use the same production and surplus data as the Production tab of the Economy view.
             // The Production tab data comes from the ProductionUISystem.
@@ -147,11 +159,12 @@ namespace ResourceLocator
             bool productionSurplusValid = ProductionSurplus.GetAmounts(out int[] productionAmounts, out int[] surplusAmounts, out _);
 
             // Define variables to hold maximum of each value.
-            int maxStorageRequires  = 0;
-            int maxStorageProduces  = 0;
-            int maxStorageSells     = 0;
-            int maxStorageStores    = 0;
-            int maxStorageInTransit = 0;
+            int maxStorageRequires    = 0;
+            int maxStorageProduces    = 0;
+            int maxStorageSells       = 0;
+            int maxStorageStores      = 0;
+            int maxStorageUnnecessary = 0;
+            int maxStorageInTransit   = 0;
 
             int maxProduction       = 0;
             int maxSurplus          = 0;
@@ -159,6 +172,9 @@ namespace ResourceLocator
             // Get resource stuff.
             ResourcePrefabs resourcePrefabs = _resourceSystem.GetPrefabs();
             ComponentLookup<ResourceData> componentLookupResourceData = SystemAPI.GetComponentLookup<ResourceData>(true);
+
+            // Whether or not selected district has unnecessary resources.
+            bool hasUnnecessary = false;
 
             // Get resource info for each building type.
             ResourceInfos resourceInfos = new();
@@ -175,35 +191,44 @@ namespace ResourceLocator
                 int resourceIndex = EconomyUtils.GetResourceIndex(resource);
 
                 // Compute max values.
-                maxStorageRequires  = Math.Max(maxStorageRequires,  storageAmountsRequires  [resourceIndex]);
-                maxStorageProduces  = Math.Max(maxStorageProduces,  storageAmountsProduces  [resourceIndex]);
-                maxStorageSells     = Math.Max(maxStorageSells,     storageAmountsSells     [resourceIndex]);
-                maxStorageStores    = Math.Max(maxStorageStores,    storageAmountsStores    [resourceIndex]);
-                maxStorageInTransit = Math.Max(maxStorageInTransit, storageAmountsInTransit [resourceIndex]);
+                maxStorageRequires    = Math.Max(maxStorageRequires,    storageAmountsRequires   [resourceIndex]);
+                maxStorageProduces    = Math.Max(maxStorageProduces,    storageAmountsProduces   [resourceIndex]);
+                maxStorageSells       = Math.Max(maxStorageSells,       storageAmountsSells      [resourceIndex]);
+                maxStorageStores      = Math.Max(maxStorageStores,      storageAmountsStores     [resourceIndex]);
+                maxStorageUnnecessary = Math.Max(maxStorageUnnecessary, storageAmountsUnnecessary[resourceIndex]);
+                maxStorageInTransit   = Math.Max(maxStorageInTransit,   storageAmountsInTransit  [resourceIndex]);
 
-                maxProduction       = Math.Max(maxProduction,       productionAmounts       [resourceIndex]);
-                maxSurplus          = Math.Max(maxSurplus, Math.Abs(surplusAmounts          [resourceIndex]));
+                maxProduction         = Math.Max(maxProduction,         productionAmounts        [resourceIndex]);
+                maxSurplus            = Math.Max(maxSurplus,   Math.Abs(surplusAmounts           [resourceIndex]));
 
                 // Get whether or not building type has weight.
                 bool hasWeight = EconomyUtils.IsResourceHasWeight(resource, resourcePrefabs, ref componentLookupResourceData);
 
+                // Selected district has unnecessary resources if any company count is greater than zero.
+                if (companyCountsUnnecessary[resourceIndex] > 0)
+                {
+                    hasUnnecessary = true;
+                }
+
                 // Add a new resource info.
                 resourceInfos.Add(new ResourceInfo
                 { 
-                    BuildingType           = buildingType,
-                    StorageAmountRequires  = storageAmountsRequires  [resourceIndex],
-                    StorageAmountProduces  = storageAmountsProduces  [resourceIndex],
-                    StorageAmountSells     = storageAmountsSells     [resourceIndex],
-                    StorageAmountStores    = storageAmountsStores    [resourceIndex],
-                    StorageAmountInTransit = storageAmountsInTransit [resourceIndex],
-                    RateValid              = productionSurplusValid,
-                    RateProduction         = productionAmounts       [resourceIndex],
-                    RateSurplus            = surplusAmounts          [resourceIndex],
-                    CompanyCountRequires   = companyCountsRequires   [resourceIndex],
-                    CompanyCountProduces   = companyCountsProduces   [resourceIndex],
-                    CompanyCountSells      = companyCountsSells      [resourceIndex],
-                    CompanyCountStores     = companyCountsStores     [resourceIndex],
-                    HasWeight              = hasWeight
+                    BuildingType             = buildingType,
+                    StorageAmountRequires    = storageAmountsRequires   [resourceIndex],
+                    StorageAmountProduces    = storageAmountsProduces   [resourceIndex],
+                    StorageAmountSells       = storageAmountsSells      [resourceIndex],
+                    StorageAmountStores      = storageAmountsStores     [resourceIndex],
+                    StorageAmountUnnecessary = storageAmountsUnnecessary[resourceIndex],
+                    StorageAmountInTransit   = storageAmountsInTransit  [resourceIndex],
+                    RateValid                = productionSurplusValid,  
+                    RateProduction           = productionAmounts        [resourceIndex],
+                    RateSurplus              = surplusAmounts           [resourceIndex],
+                    CompanyCountRequires     = companyCountsRequires    [resourceIndex],
+                    CompanyCountProduces     = companyCountsProduces    [resourceIndex],
+                    CompanyCountSells        = companyCountsSells       [resourceIndex],
+                    CompanyCountStores       = companyCountsStores      [resourceIndex],
+                    CompanyCountUnnecessary  = companyCountsUnnecessary [resourceIndex],
+                    HasWeight                = hasWeight
                 });
             }
 
@@ -213,24 +238,35 @@ namespace ResourceLocator
             // instead of recomputing the max values for every infomode.
             resourceInfos.Add(new ResourceInfo
             {
-                BuildingType           = RLBuildingType.MaxValues,
-                StorageAmountRequires  = maxStorageRequires,
-                StorageAmountProduces  = maxStorageProduces,
-                StorageAmountSells     = maxStorageSells,
-                StorageAmountStores    = maxStorageStores,
-                StorageAmountInTransit = maxStorageInTransit,
-                RateValid              = false,
-                RateProduction         = maxProduction, 
-                RateSurplus            = maxSurplus, 
-                CompanyCountRequires   = 0,
-                CompanyCountProduces   = 0,
-                CompanyCountSells      = 0,
-                CompanyCountStores     = 0,
-                HasWeight              = false
+                BuildingType             = RLBuildingType.MaxValues,
+                StorageAmountRequires    = maxStorageRequires,
+                StorageAmountProduces    = maxStorageProduces,
+                StorageAmountSells       = maxStorageSells,
+                StorageAmountStores      = maxStorageStores,
+                StorageAmountUnnecessary = maxStorageUnnecessary,
+                StorageAmountInTransit   = maxStorageInTransit,
+                RateValid                = false,
+                RateProduction           = maxProduction, 
+                RateSurplus              = maxSurplus, 
+                CompanyCountRequires     = 0,
+                CompanyCountProduces     = 0,
+                CompanyCountSells        = 0,
+                CompanyCountStores       = 0,
+                CompanyCountUnnecessary  = 0,
+                HasWeight                = false
             });
 
             // Write resource infos to the UI.
             resourceInfos.Write(writer);
+
+            // Update whether or not selected district has unnecessary resources.
+            _bindingHasUnnecessary.Update(hasUnnecessary);
+
+            // If selected district does not have unnecessary resources and the Unnecessary display option is selected, then change display option.
+            if (!hasUnnecessary && Mod.ModSettings.DisplayOption == DisplayOption.Unnecessary)
+            {
+                DisplayOptionClicked((int)DisplayOption.Requires);
+            }
         }
 
         /// <summary>
@@ -239,7 +275,7 @@ namespace ResourceLocator
         private void CheckForDistrictChange()
         {
             // Get district infos and find selected district.
-            bool foundSelectedDistrict = (selectedDistrict == EntireCity);
+            bool foundSelectedDistrict = (SelectedDistrict == EntireCity);
             DistrictInfos districtInfos = new();
             NativeArray<Entity> districtEntities = _districtQuery.ToEntityArray(Allocator.Temp);
             foreach (Entity districtEntity in districtEntities)
@@ -252,7 +288,7 @@ namespace ResourceLocator
                     districtInfos.Add(new DistrictInfo(districtEntity, districtName));
 
                     // Check if this is the selected district.
-                    if (districtEntity == selectedDistrict)
+                    if (districtEntity == SelectedDistrict)
                     {
                         foundSelectedDistrict = true;
                     }
@@ -307,10 +343,10 @@ namespace ResourceLocator
         private void SelectedDistrictChanged(Entity newDistrict)
         {
             // Save selected district.
-            selectedDistrict = newDistrict;
+            SelectedDistrict = newDistrict;
 
             // Immediately send the selected district back to the UI.
-            _bindingSelectedDistrict.Update(selectedDistrict);
+            _bindingSelectedDistrict.Update(SelectedDistrict);
         }
 
         /// <summary>
@@ -323,6 +359,56 @@ namespace ResourceLocator
 
             // Immediately send the display option back to the UI.
             _bindingDisplayOption.Update(newDisplayOption);
+        }
+
+        /// <summary>
+        /// Event callback for remove unnecessary button clicked.
+        /// </summary>
+        private void RemoveUnnecessaryClicked()
+        {
+            // Get the companies.
+            // IndustrialCompany also includes extractor, storage, and office companies, as desired.
+            EntityQuery query = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<PropertyRenter, PrefabRef>()
+                .WithAny<CommercialCompany, IndustrialCompany>()
+                .WithNone<Temp, Deleted>()
+                .Build(EntityManager);
+            NativeArray<Entity> companyEntities = query.ToEntityArray(Allocator.Temp);
+
+            // Do each company entity.
+            foreach (Entity companyEntity in companyEntities)
+            {
+                // Get data for the company.
+                if (EntityManager.TryGetComponent(companyEntity, out PropertyRenter propertyRenter) &&
+                    EntityManager.TryGetComponent(propertyRenter.m_Property, out CurrentDistrict propertyCurrentDistrict) &&
+                    EntityManager.TryGetBuffer(companyEntity, true, out DynamicBuffer<Game.Economy.Resources> resources) &&
+                    EntityManager.TryGetComponent(companyEntity, out PrefabRef companyPrefabRef) &&
+                    EntityManager.TryGetComponent(companyPrefabRef.m_Prefab, out IndustrialProcessData industrialProcessData))
+                {
+                    // Property of company must be in the selected district.
+                    if (SelectedDistrict == EntireCity || propertyCurrentDistrict.m_District == SelectedDistrict)
+                    {
+                        // Combine the predefined necessary resources with company input and output resources.
+                        Resource necessaryResources =
+                            BuildingColorSystem.NecessaryResources    |
+                            industrialProcessData.m_Input1.m_Resource |
+                            industrialProcessData.m_Input2.m_Resource |
+                            industrialProcessData.m_Output.m_Resource;
+
+                        // Do each resource in the buffer.
+                        // Do in reverse order to avoid having to deal with the index for a removed entry.
+                        for (int i = resources.Length - 1; i >= 0; i--)
+                        {
+                            // The resource must not be a necessary resource.
+                            if ((resources[i].m_Resource & necessaryResources) == 0)
+                            {
+                                // Remove the unnecessary resource from the buffer.
+                                resources.RemoveAt(i);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         /// <summary>

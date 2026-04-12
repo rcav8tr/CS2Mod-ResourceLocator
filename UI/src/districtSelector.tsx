@@ -1,11 +1,11 @@
 ﻿import { bindValue, useValue, trigger           } from "cs2/api";
 import { useLocalization                        } from "cs2/l10n";
-import { Dropdown, DropdownItem, DropdownToggle } from "cs2/ui";
+import { Dropdown, DropdownToggle               } from "cs2/ui";
 import { Entity                                 } from "cs2/utils";
 
 import   styles                                   from "districtSelector.module.scss";
 import   mod                                      from "../mod.json";
-import { ModuleResolver                         } from "moduleResolver";
+import { DropdownItem, ModuleResolver           } from "moduleResolver";
 import { uiBindingNames, uiEventNames           } from "uiBindings";
 import { UITranslationKey                       } from "uiTranslationKey";
 

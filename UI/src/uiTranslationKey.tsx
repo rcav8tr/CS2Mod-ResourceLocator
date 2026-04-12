@@ -100,7 +100,10 @@ export class UITranslationKey
     public static DisplayOptionProduces                             : string = "ResourceLocator.DisplayOptionProduces";
     public static DisplayOptionSells                                : string = "ResourceLocator.DisplayOptionSells";
     public static DisplayOptionStores                               : string = "ResourceLocator.DisplayOptionStores";
+    public static DisplayOptionUnnecessary                          : string = "ResourceLocator.DisplayOptionUnnecessary";
     public static DisplayOptionTooltip                              : string = "ResourceLocator.DisplayOptionTooltip";
+    public static RemoveUnnecessary                                 : string = "ResourceLocator.RemoveUnnecessary";
+    public static UnnecessaryTooltip                                : string = "ResourceLocator.UnnecessaryTooltip";
 
     // Color option text.
     public static ColorOptionColor                                  : string = "ResourceLocator.ColorOptionColor";

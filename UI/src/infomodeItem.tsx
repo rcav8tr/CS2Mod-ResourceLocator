@@ -29,6 +29,7 @@ type ResourceInfo =
     storageAmountProduces:      number;
     storageAmountSells:         number;
     storageAmountStores:        number;
+    storageAmountUnnecessary:   number;
     storageAmountInTransit:     number;
 
     rateValid:                  boolean;
@@ -39,6 +40,7 @@ type ResourceInfo =
     companyCountProduces:       number;
     companyCountSells:          number;
     companyCountStores:         number;
+    companyCountUnnecessary:    number;
 
     hasWeight:                  boolean;
 }
@@ -62,24 +64,26 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
 {
     // Translations.
     const { translate } = useLocalization();
-    const translationInfomodeTitle      = translate("Infoviews.INFOMODE[" + infomode.id + "]");
-    const translationInfomodeTooltip    = translate("Infoviews.INFOMODE_TOOLTIP[" + infomode.id + "]");
-    const translationBuildingColor      = translate("Infoviews.INFOMODE_TYPE[BuildingColor]");
-    const translationThousandsSeparator = translate("Common.THOUSANDS_SEPARATOR", ",") + "";
-    const translationStorage            = translate("SelectedInfoPanel.WAREHOUSE_STORAGE");
-    const translationStorageRequires    = translationStorage + " - " + translate(UITranslationKey.DisplayOptionRequires   ) + ": ";
-    const translationStorageProduces    = translationStorage + " - " + translate(UITranslationKey.DisplayOptionProduces   ) + ": ";
-    const translationStorageSells       = translationStorage + " - " + translate(UITranslationKey.DisplayOptionSells      ) + ": ";
-    const translationStorageStores      = translationStorage + " - " + translate(UITranslationKey.DisplayOptionStores     ) + ": ";
-    const translationInTransit          =                              translate(UITranslationKey.InfomodeTooltipInTransit) + ": ";
-    const translationRateProduction     = translate("EconomyPanel.PRODUCTION_PAGE_PRODUCTION") + ": ";
-    const translationRateSurplus        = translate("EconomyPanel.PRODUCTION_PAGE_SURPLUS"   ) + ": "
-    const translationRateDeficit        = translate("EconomyPanel.PRODUCTION_PAGE_DEFICIT"   ) + ": "
-    const translationCompanies          = translate("StatisticsPanel.STAT_TITLE[Companies]");
-    const translationCompaniesRequires  = translationCompanies + " - " + translate(UITranslationKey.DisplayOptionRequires) + ": ";
-    const translationCompaniesProduces  = translationCompanies + " - " + translate(UITranslationKey.DisplayOptionProduces) + ": ";
-    const translationCompaniesSells     = translationCompanies + " - " + translate(UITranslationKey.DisplayOptionSells   ) + ": ";
-    const translationCompaniesStores    = translationCompanies + " - " + translate(UITranslationKey.DisplayOptionStores  ) + ": ";
+    const translationInfomodeTitle        = translate("Infoviews.INFOMODE[" + infomode.id + "]");
+    const translationInfomodeTooltip      = translate("Infoviews.INFOMODE_TOOLTIP[" + infomode.id + "]");
+    const translationBuildingColor        = translate("Infoviews.INFOMODE_TYPE[BuildingColor]");
+    const translationThousandsSeparator   = translate("Common.THOUSANDS_SEPARATOR", ",") + "";
+    const translationStorage              = translate("SelectedInfoPanel.WAREHOUSE_STORAGE");
+    const translationStorageRequires      = translationStorage + " - " + translate(UITranslationKey.DisplayOptionRequires   ) + ": ";
+    const translationStorageProduces      = translationStorage + " - " + translate(UITranslationKey.DisplayOptionProduces   ) + ": ";
+    const translationStorageSells         = translationStorage + " - " + translate(UITranslationKey.DisplayOptionSells      ) + ": ";
+    const translationStorageStores        = translationStorage + " - " + translate(UITranslationKey.DisplayOptionStores     ) + ": ";
+    const translationStorageUnnecessary   = translationStorage + " - " + translate(UITranslationKey.DisplayOptionUnnecessary) + ": ";
+    const translationInTransit            =                              translate(UITranslationKey.InfomodeTooltipInTransit) + ": ";
+    const translationRateProduction       = translate("EconomyPanel.PRODUCTION_PAGE_PRODUCTION") + ": ";
+    const translationRateSurplus          = translate("EconomyPanel.PRODUCTION_PAGE_SURPLUS"   ) + ": "
+    const translationRateDeficit          = translate("EconomyPanel.PRODUCTION_PAGE_DEFICIT"   ) + ": "
+    const translationCompanies            = translate("StatisticsPanel.STAT_TITLE[Companies]");
+    const translationCompaniesRequires    = translationCompanies + " - " + translate(UITranslationKey.DisplayOptionRequires   ) + ": ";
+    const translationCompaniesProduces    = translationCompanies + " - " + translate(UITranslationKey.DisplayOptionProduces   ) + ": ";
+    const translationCompaniesSells       = translationCompanies + " - " + translate(UITranslationKey.DisplayOptionSells      ) + ": ";
+    const translationCompaniesStores      = translationCompanies + " - " + translate(UITranslationKey.DisplayOptionStores     ) + ": ";
+    const translationCompaniesUnnecessary = translationCompanies + " - " + translate(UITranslationKey.DisplayOptionUnnecessary) + ": ";
 
     // Format base infomode tooltip into paragraphs.
     // This also applies markdown formatting embedded in the text.
@@ -92,22 +96,24 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     const colorOption:   ColorOption   = useValue(bindingColorOption);
 
     // Define variables for storage and rate values for this resource.
-    let valueStorageRequires:   number = 0;
-    let valueStorageProduces:   number = 0;
-    let valueStorageSells:      number = 0;
-    let valueStorageStores:     number = 0;
-    let valueStorageInTransit:  number = 0;
+    let valueStorageRequires:      number = 0;
+    let valueStorageProduces:      number = 0;
+    let valueStorageSells:         number = 0;
+    let valueStorageStores:        number = 0;
+    let valueStorageUnnecessary:   number = 0;
+    let valueStorageInTransit:     number = 0;
+                                   
+    let valueRateValid:            boolean = false;
+    let valueRateProduction:       number = 0;
+    let valueRateSurplus:          number = 0;
+                                   
+    let valueCompaniesRequires:    number = 0;
+    let valueCompaniesProduces:    number = 0;
+    let valueCompaniesSells:       number = 0;
+    let valueCompaniesStores:      number = 0;
+    let valueCompaniesUnnecessary: number = 0;
 
-    let valueRateValid:         boolean = false;
-    let valueRateProduction:    number = 0;
-    let valueRateSurplus:       number = 0;
-
-    let valueCompaniesRequires: number = 0;
-    let valueCompaniesProduces: number = 0;
-    let valueCompaniesSells:    number = 0;
-    let valueCompaniesStores:   number = 0;
-
-    let valueHasWeight:         boolean = false;
+    let valueHasWeight:            boolean = false;
 
     // Do each resource info.
     const resourceInfos: ResourceInfo[] = useValue(bindingResourceInfos);
@@ -119,22 +125,24 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
         {
             // Get storage and rate values for this resource.
             // Note that deficit comes thru as a positive value.
-            valueStorageRequires    = resourceInfo.storageAmountRequires;
-            valueStorageProduces    = resourceInfo.storageAmountProduces;
-            valueStorageSells       = resourceInfo.storageAmountSells;
-            valueStorageStores      = resourceInfo.storageAmountStores;
-            valueStorageInTransit   = resourceInfo.storageAmountInTransit;
+            valueStorageRequires      = resourceInfo.storageAmountRequires;
+            valueStorageProduces      = resourceInfo.storageAmountProduces;
+            valueStorageSells         = resourceInfo.storageAmountSells;
+            valueStorageStores        = resourceInfo.storageAmountStores;
+            valueStorageUnnecessary   = resourceInfo.storageAmountUnnecessary;
+            valueStorageInTransit     = resourceInfo.storageAmountInTransit;
+                                      
+            valueRateValid            = resourceInfo.rateValid;
+            valueRateProduction       = resourceInfo.rateProduction;
+            valueRateSurplus          = resourceInfo.rateSurplus;
+                                      
+            valueCompaniesRequires    = resourceInfo.companyCountRequires;
+            valueCompaniesProduces    = resourceInfo.companyCountProduces;
+            valueCompaniesSells       = resourceInfo.companyCountSells;
+            valueCompaniesStores      = resourceInfo.companyCountStores;
+            valueCompaniesUnnecessary = resourceInfo.companyCountUnnecessary;
 
-            valueRateValid          = resourceInfo.rateValid;
-            valueRateProduction     = resourceInfo.rateProduction;
-            valueRateSurplus        = resourceInfo.rateSurplus;
-
-            valueCompaniesRequires  = resourceInfo.companyCountRequires;
-            valueCompaniesProduces  = resourceInfo.companyCountProduces;
-            valueCompaniesSells     = resourceInfo.companyCountSells;
-            valueCompaniesStores    = resourceInfo.companyCountStores;
-
-            valueHasWeight          = resourceInfo.hasWeight;
+            valueHasWeight            = resourceInfo.hasWeight;
 
             // Found the building type.  Stop checking.
             break;
@@ -159,10 +167,11 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
         // Get max storage value for the current Display Option.
         switch (displayOption)
         {
-            case DisplayOption.Requires: valueStorageMaxAll = maxResourceInfo.storageAmountRequires; break;
-            case DisplayOption.Produces: valueStorageMaxAll = maxResourceInfo.storageAmountProduces; break;
-            case DisplayOption.Sells:    valueStorageMaxAll = maxResourceInfo.storageAmountSells;    break;
-            case DisplayOption.Stores:   valueStorageMaxAll = maxResourceInfo.storageAmountStores;   break;
+            case DisplayOption.Requires:    valueStorageMaxAll = maxResourceInfo.storageAmountRequires;    break;
+            case DisplayOption.Produces:    valueStorageMaxAll = maxResourceInfo.storageAmountProduces;    break;
+            case DisplayOption.Sells:       valueStorageMaxAll = maxResourceInfo.storageAmountSells;       break;
+            case DisplayOption.Stores:      valueStorageMaxAll = maxResourceInfo.storageAmountStores;      break;
+            case DisplayOption.Unnecessary: valueStorageMaxAll = maxResourceInfo.storageAmountUnnecessary; break;
         }
 
         // Get max rate value between production, surplus, and deficit.
@@ -188,10 +197,11 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     let percentStorage: number = 0;
     switch (displayOption)
     {
-        case DisplayOption.Requires: percentStorage = ComputePercent(valueStorageRequires, valueStorageMaxAll); break;
-        case DisplayOption.Produces: percentStorage = ComputePercent(valueStorageProduces, valueStorageMaxAll); break;
-        case DisplayOption.Sells:    percentStorage = ComputePercent(valueStorageSells,    valueStorageMaxAll); break;
-        case DisplayOption.Stores:   percentStorage = ComputePercent(valueStorageStores,   valueStorageMaxAll); break;
+        case DisplayOption.Requires:    percentStorage = ComputePercent(valueStorageRequires,    valueStorageMaxAll); break;
+        case DisplayOption.Produces:    percentStorage = ComputePercent(valueStorageProduces,    valueStorageMaxAll); break;
+        case DisplayOption.Sells:       percentStorage = ComputePercent(valueStorageSells,       valueStorageMaxAll); break;
+        case DisplayOption.Stores:      percentStorage = ComputePercent(valueStorageStores,      valueStorageMaxAll); break;
+        case DisplayOption.Unnecessary: percentStorage = ComputePercent(valueStorageUnnecessary, valueStorageMaxAll); break;
     }
 
     // Compute percents for the rate values compared to the max of all rate values.
@@ -211,15 +221,16 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     {
         // Convert this resource's values from kg to pounds.
         const poundsPerKG: number = 2.204622622;
-        valueStorageRequires  = Math.round(valueStorageRequires  * poundsPerKG);
-        valueStorageProduces  = Math.round(valueStorageProduces  * poundsPerKG);
-        valueStorageSells     = Math.round(valueStorageSells     * poundsPerKG);
-        valueStorageStores    = Math.round(valueStorageStores    * poundsPerKG);
-        valueStorageInTransit = Math.round(valueStorageInTransit * poundsPerKG);
+        valueStorageRequires    = Math.round(valueStorageRequires    * poundsPerKG);
+        valueStorageProduces    = Math.round(valueStorageProduces    * poundsPerKG);
+        valueStorageSells       = Math.round(valueStorageSells       * poundsPerKG);
+        valueStorageStores      = Math.round(valueStorageStores      * poundsPerKG);
+        valueStorageUnnecessary = Math.round(valueStorageUnnecessary * poundsPerKG);
+        valueStorageInTransit   = Math.round(valueStorageInTransit   * poundsPerKG);
 
-        valueRateProduction   = Math.round(valueRateProduction   * poundsPerKG);
-        valueRateSurplus      = Math.round(valueRateSurplus      * poundsPerKG);
-        valueRateDeficit      = Math.round(valueRateDeficit      * poundsPerKG);
+        valueRateProduction     = Math.round(valueRateProduction     * poundsPerKG);
+        valueRateSurplus        = Math.round(valueRateSurplus        * poundsPerKG);
+        valueRateDeficit        = Math.round(valueRateDeficit        * poundsPerKG);
     }
 
     // Get maximum between storage and rate values for this resource.
@@ -228,6 +239,7 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
         valueStorageProduces,
         valueStorageSells,
         valueStorageStores,
+        valueStorageUnnecessary,
         valueStorageInTransit,
 
         valueRateProduction,
@@ -324,15 +336,16 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     }
 
     // Apply scaling factor to storage and rate values.
-    const valueScaledStorageRequires:  number = Math.round(valueStorageRequires  / scalingFactor);
-    const valueScaledStorageProduces:  number = Math.round(valueStorageProduces  / scalingFactor);
-    const valueScaledStorageSells:     number = Math.round(valueStorageSells     / scalingFactor);
-    const valueScaledStorageStores:    number = Math.round(valueStorageStores    / scalingFactor);
-    const valueScaledStorageInTransit: number = Math.round(valueStorageInTransit / scalingFactor);
+    const valueScaledStorageRequires:    number = Math.round(valueStorageRequires    / scalingFactor);
+    const valueScaledStorageProduces:    number = Math.round(valueStorageProduces    / scalingFactor);
+    const valueScaledStorageSells:       number = Math.round(valueStorageSells       / scalingFactor);
+    const valueScaledStorageStores:      number = Math.round(valueStorageStores      / scalingFactor);
+    const valueScaledStorageUnnecessary: number = Math.round(valueStorageUnnecessary / scalingFactor);
+    const valueScaledStorageInTransit:   number = Math.round(valueStorageInTransit   / scalingFactor);
 
-    const valueScaledRateProduction:   number = Math.round(valueRateProduction   / scalingFactor);
-    const valueScaledRateSurplus:      number = Math.round(valueRateSurplus      / scalingFactor);
-    const valueScaledRateDeficit:      number = Math.round(valueRateDeficit      / scalingFactor);
+    const valueScaledRateProduction:     number = Math.round(valueRateProduction     / scalingFactor);
+    const valueScaledRateSurplus:        number = Math.round(valueRateSurplus        / scalingFactor);
+    const valueScaledRateDeficit:        number = Math.round(valueRateDeficit        / scalingFactor);
 
     // Remove variable placeholders from unit of measure prefix and text.
     uomPrefix      = "" + uomPrefix     ?.replace("{SIGN}{VALUE}", "").trim();
@@ -350,20 +363,22 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     }
 
     // Compute formatted storage and rate values.
-    const formattedStorageRequires:     string = FormatValue(valueScaledStorageRequires,  uomPrefix, storageUOMText);
-    const formattedStorageProduces:     string = FormatValue(valueScaledStorageProduces,  uomPrefix, storageUOMText);
-    const formattedStorageSells:        string = FormatValue(valueScaledStorageSells,     uomPrefix, storageUOMText);
-    const formattedStorageStores:       string = FormatValue(valueScaledStorageStores,    uomPrefix, storageUOMText);
-    const formattedInTransit:           string = FormatValue(valueScaledStorageInTransit, uomPrefix, storageUOMText);
+    const formattedStorageRequires:      string = FormatValue(valueScaledStorageRequires,    uomPrefix, storageUOMText);
+    const formattedStorageProduces:      string = FormatValue(valueScaledStorageProduces,    uomPrefix, storageUOMText);
+    const formattedStorageSells:         string = FormatValue(valueScaledStorageSells,       uomPrefix, storageUOMText);
+    const formattedStorageStores:        string = FormatValue(valueScaledStorageStores,      uomPrefix, storageUOMText);
+    const formattedStorageUnnecessary:   string = FormatValue(valueScaledStorageUnnecessary, uomPrefix, storageUOMText);
+    const formattedInTransit:            string = FormatValue(valueScaledStorageInTransit,   uomPrefix, storageUOMText);
 
     const valueScaledRateSurplusDeficit: number = valueScaledRateDeficit > 0 ? valueScaledRateDeficit : valueScaledRateSurplus;
-    let   formattedRateProduction:      string = FormatValue(valueScaledRateProduction,     uomPrefix, rateUOMText);
-    let   formattedRateSurplusDeficit:  string = FormatValue(valueScaledRateSurplusDeficit, uomPrefix, rateUOMText);
+    let   formattedRateProduction:       string = FormatValue(valueScaledRateProduction,     uomPrefix, rateUOMText);
+    let   formattedRateSurplusDeficit:   string = FormatValue(valueScaledRateSurplusDeficit, uomPrefix, rateUOMText);
 
-    const formattedCompaniesRequires:   string = FormatValue(valueCompaniesRequires,  "", "");
-    const formattedCompaniesProduces:   string = FormatValue(valueCompaniesProduces,  "", "");
-    const formattedCompaniesSells:      string = FormatValue(valueCompaniesSells,     "", "");
-    const formattedCompaniesStores:     string = FormatValue(valueCompaniesStores,    "", "");
+    const formattedCompaniesRequires:    string = FormatValue(valueCompaniesRequires,    "", "");
+    const formattedCompaniesProduces:    string = FormatValue(valueCompaniesProduces,    "", "");
+    const formattedCompaniesSells:       string = FormatValue(valueCompaniesSells,       "", "");
+    const formattedCompaniesStores:      string = FormatValue(valueCompaniesStores,      "", "");
+    const formattedCompaniesUnnecessary: string = FormatValue(valueCompaniesUnnecessary, "", "");
 
     // Check for invalid rates.
     if (!valueRateValid)
@@ -372,10 +387,11 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     }
 
     // Compute styles to set text color based on display option.
-    const styleColorRequires:       Partial<CSSProperties> = displayOption === DisplayOption.Requires ? { color: "var(--resourceLocatorStorageColor)" } : {};
-    const styleColorProduces:       Partial<CSSProperties> = displayOption === DisplayOption.Produces ? { color: "var(--resourceLocatorStorageColor)" } : {};
-    const styleColorSells:          Partial<CSSProperties> = displayOption === DisplayOption.Sells    ? { color: "var(--resourceLocatorStorageColor)" } : {};
-    const styleColorStores:         Partial<CSSProperties> = displayOption === DisplayOption.Stores   ? { color: "var(--resourceLocatorStorageColor)" } : {};
+    const styleColorRequires:       Partial<CSSProperties> = displayOption === DisplayOption.Requires    ? { color: "var(--resourceLocatorStorageColor)" } : {};
+    const styleColorProduces:       Partial<CSSProperties> = displayOption === DisplayOption.Produces    ? { color: "var(--resourceLocatorStorageColor)" } : {};
+    const styleColorSells:          Partial<CSSProperties> = displayOption === DisplayOption.Sells       ? { color: "var(--resourceLocatorStorageColor)" } : {};
+    const styleColorStores:         Partial<CSSProperties> = displayOption === DisplayOption.Stores      ? { color: "var(--resourceLocatorStorageColor)" } : {};
+    const styleColorUnnecessary:    Partial<CSSProperties> = displayOption === DisplayOption.Unnecessary ? { color: "var(--resourceLocatorStorageColor)" } : {};
 
     const styleColorProduction:     Partial<CSSProperties> = valueRateValid && displayOption === DisplayOption.Produces ? { color: "var(--resourceLocatorProductionColor)" } : {};
     const styleColorSurplusDeficit: Partial<CSSProperties> = valueRateValid && displayOption === DisplayOption.Produces ? { color: valueRateDeficit > 0 ? "var(--resourceLocatorDeficitColor)" : "var(--resourceLocatorSurplusColor)" } : {};
@@ -434,6 +450,15 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
                             <div className={styles.resourceLocatorInfomodeDataRowHeading}>{translationStorageStores}</div>
                             <div className={styles.resourceLocatorInfomodeDataRowValue}>{formattedStorageStores}</div>
                         </div>
+                        {
+                            valueCompaniesUnnecessary > 0 &&
+                            (
+                                <div className={styles.resourceLocatorInfomodeDataRow} style={styleColorUnnecessary}>
+                                    <div className={styles.resourceLocatorInfomodeDataRowHeading}>{translationStorageUnnecessary}</div>
+                                    <div className={styles.resourceLocatorInfomodeDataRowValue}>{formattedStorageUnnecessary}</div>
+                                </div>
+                            )
+                        }
                         <div className={styles.resourceLocatorInfomodeDataRow}>
                             <div className={styles.resourceLocatorInfomodeDataRowHeading}>{translationInTransit}</div>
                             <div className={styles.resourceLocatorInfomodeDataRowValue}>{formattedInTransit}</div>
@@ -466,6 +491,15 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
                             <div className={styles.resourceLocatorInfomodeDataRowHeading}>{translationCompaniesStores}</div>
                             <div className={styles.resourceLocatorInfomodeDataRowValue}>{formattedCompaniesStores}</div>
                         </div>
+                        {
+                            valueCompaniesUnnecessary > 0 &&
+                            (
+                                <div className={styles.resourceLocatorInfomodeDataRow}>
+                                    <div className={styles.resourceLocatorInfomodeDataRowHeading}>{translationCompaniesUnnecessary}</div>
+                                    <div className={styles.resourceLocatorInfomodeDataRowValue}>{formattedCompaniesUnnecessary}</div>
+                                </div>
+                            )
+                        }
                     </div>
                     <div className={styles.resourceLocatorInfomodeDataRowBottom} />
                 </>

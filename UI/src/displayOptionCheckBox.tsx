@@ -28,10 +28,11 @@ export const DisplayOptionCheckBox = ({ displayOption }: DisplayOptionCheckBoxPr
     let translationKey: string;
     switch (displayOption)
     {
-        case DisplayOption.Requires: translationKey = UITranslationKey.DisplayOptionRequires; break;
-        case DisplayOption.Produces: translationKey = UITranslationKey.DisplayOptionProduces; break;
-        case DisplayOption.Sells:    translationKey = UITranslationKey.DisplayOptionSells;    break;
-        case DisplayOption.Stores:   translationKey = UITranslationKey.DisplayOptionStores;   break;
+        case DisplayOption.Requires:    translationKey = UITranslationKey.DisplayOptionRequires;    break;
+        case DisplayOption.Produces:    translationKey = UITranslationKey.DisplayOptionProduces;    break;
+        case DisplayOption.Sells:       translationKey = UITranslationKey.DisplayOptionSells;       break;
+        case DisplayOption.Stores:      translationKey = UITranslationKey.DisplayOptionStores;      break;
+        case DisplayOption.Unnecessary: translationKey = UITranslationKey.DisplayOptionUnnecessary; break;
     }
     const { translate } = useLocalization();
     const label: string = translate(translationKey) || translationKey;

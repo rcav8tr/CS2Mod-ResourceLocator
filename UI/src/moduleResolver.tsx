@@ -3,6 +3,8 @@ import { InputAction                                                } from "cs2/
 import { getModule                                                  } from "cs2/modding";
 import { FormattedParagraphsProps, TooltipProps                     } from "cs2/ui";
 
+// TBD Provide temporary replacement for DropdownItem from cs2/ui which is broken.
+export const DropdownItem = getModule("game-ui/common/input/dropdown/items/dropdown-item.tsx", "DropdownItem");
 
 type ColorFieldProps =
 {

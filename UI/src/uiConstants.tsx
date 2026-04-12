@@ -60,6 +60,7 @@ export enum DisplayOption
     Produces                         = 1,
     Sells                            = 2,
     Stores                           = 3,
+    Unnecessary                      = 4,
 }
 
 // Define color options.

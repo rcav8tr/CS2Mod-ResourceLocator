@@ -1,12 +1,16 @@
 ﻿# Resource Locator
 New info view to locate buildings where resources are required, produced, sold, and stored.
+Locate and remove unnecessary resources in companies.
 Locate cargo vehicles transporting resources.
 
 # Description
 With this info view, you can:
 - View where your city's resources are located according to how the resources are being used:  required, produced, sold, and stored.
 - View detailed information for each resource, including how it is obtained and how it is used.
-- View storage amounts for buildings that require, produce, sell, and store each resource.
+- View storage amounts and company counts for buildings that require, produce, sell, and store each resource.
+- View and allow removal of unnecessary resources at companies.
+  A resource is unnecessary if it is not an input or output of the company and is not money, mail, or garbage.
+  Timber and Concrete are sometimes present when unnecessary.
 - View production/surplus/deficit rates for buildings that produce or consume each resource.
 - View individual districts.
 - View individual resources.
@@ -29,6 +33,9 @@ If your city has no districts:
 ### Display Option
 - The Requires, Produces, Sells, and Stores options show buildings that require, produce, sell, or store a **selected resource**.
 - These options match the game's building information when you click on a building.
+- The Unnecessary option shows buildings where **selected resourcess** are present but which are unnecessary.
+  To remove unnecessary resources from companies in the **selected district**, click on the **Remove Unnecessary** button.
+  The Unnecessary option and button are available only if there are unnecessary resources in the **selected district**.
 - The color of each building indicates that the corresponding selected resource is being used by that building according to the selected **Display Option**.
 - Only one **Display Option** can be selected at a time.
 - **Display Option** does not affect **Cargo Vehicles** (see below).
@@ -72,6 +79,7 @@ Hover the cursor over a resource to get detailed information about that resource
   **In Transit** amount excludes resources being transported between two outside connections.
 - Number of companies in the **selected district** that require, produce, sell, or store the resource according to the selected **Display Option**.
   Number of companies excludes **Special Case Buildings** (see below) because they do not have companies.
+- If the resource is unnecessary in the **selected district**, the amount stored and number of companies is shown.
 
 ### Buildings With A Single Resource
 - If a building requires, produces, sells, or stores only one resource, the building color is set according to that resource.
@@ -86,6 +94,7 @@ Hover the cursor over a resource to get detailed information about that resource
   then for a building that produces Steel, the color is set for Coal because Coal is higher in the list than Metals.
 - Most buildings store only one resource (exception is cargo transport buildings).
   If a building stores more than one resource, the color is set according to the top **selected resource** currently stored in the building.
+- If a building has more than one unnecesary resource, the color is set according to the top **selected resource** currently present in the building.
 - Even though different port storage buildings can hold different resources, the color for all is set the same as the port gate.
 - To view these buildings in their other color(s), deselect the top resource of the building.
 

@@ -1,2 +1,1 @@
-﻿- Update for Skyscrapers DLC.
-- Update resource section headings.
+﻿- Locate and allow removal of unnecessary resources from companies.

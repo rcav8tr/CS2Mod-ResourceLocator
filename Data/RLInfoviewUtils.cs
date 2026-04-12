@@ -134,6 +134,7 @@ namespace ResourceLocator
                 {
                     // Get infomode color based on building type.
                     // Except where noted, each color was taken manually from the corresponding resource icon.
+                    // These same colors are also used in Building Use mod.
                     switch ((RLBuildingType)infomodePrefab.m_Type)
                     {
                         case RLBuildingType.Wood:               color = GetColor(136,  77,  31); break;     // Dark part of the wood.

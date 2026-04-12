@@ -15,6 +15,7 @@ namespace ResourceLocator
         public int StorageAmountProduces    { get; set; }
         public int StorageAmountSells       { get; set; }
         public int StorageAmountStores      { get; set; }
+        public int StorageAmountUnnecessary { get; set; }
         public int StorageAmountInTransit   { get; set; }
 
         // Rate data.
@@ -27,6 +28,7 @@ namespace ResourceLocator
         public int CompanyCountProduces     { get; set; }
         public int CompanyCountSells        { get; set; }
         public int CompanyCountStores       { get; set; }
+        public int CompanyCountUnnecessary  { get; set; }
 
         // Miscellaneous.
         public bool HasWeight               { get; set; }
@@ -47,6 +49,8 @@ namespace ResourceLocator
 			writer.Write(StorageAmountSells);
 			writer.PropertyName("storageAmountStores");
 			writer.Write(StorageAmountStores);
+			writer.PropertyName("storageAmountUnnecessary");
+			writer.Write(StorageAmountUnnecessary);
 			writer.PropertyName("storageAmountInTransit");
 			writer.Write(StorageAmountInTransit);
 			writer.PropertyName("rateValid");
@@ -63,6 +67,8 @@ namespace ResourceLocator
 			writer.Write(CompanyCountSells);
 			writer.PropertyName("companyCountStores");
 			writer.Write(CompanyCountStores);
+			writer.PropertyName("companyCountUnnecessary");
+			writer.Write(CompanyCountUnnecessary);
 			writer.PropertyName("hasWeight");
 			writer.Write(HasWeight);
 			writer.TypeEnd();

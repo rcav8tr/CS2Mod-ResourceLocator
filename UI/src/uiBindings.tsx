@@ -8,6 +8,7 @@ export class uiBindingNames
     public static SelectedDistrict                     : string = "SelectedDistrict";
     public static DistrictInfos                        : string = "DistrictInfos";
     public static DisplayOption                        : string = "DisplayOption";
+    public static HasUnnecessary                       : string = "HasUnnecessary";
     public static ColorOption                          : string = "ColorOption";
     public static OneColor                             : string = "OneColor";
     public static ResourceInfos                        : string = "ResourceInfos";
@@ -18,6 +19,7 @@ export class uiEventNames
 {
     public static SelectedDistrictChanged              : string = "SelectedDistrictChanged";
     public static DisplayOptionClicked                 : string = "DisplayOptionClicked";
+    public static RemoveUnnecessaryClicked             : string = "RemoveUnnecessaryClicked";
     public static ColorOptionClicked                   : string = "ColorOptionClicked";
     public static OneColorChanged                      : string = "OneColorChanged";
 }

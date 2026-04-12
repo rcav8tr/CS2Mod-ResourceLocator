@@ -102,6 +102,7 @@ namespace ResourceLocator
             sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameSelectedDistrict      .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameSelectedDistrict}\";");
             sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameDistrictInfos         .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameDistrictInfos   }\";");
             sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameDisplayOption         .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameDisplayOption   }\";");
+            sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameHasUnnecessary        .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameHasUnnecessary  }\";");
             sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameColorOption           .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameColorOption     }\";");
             sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameOneColor              .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameOneColor        }\";");
             sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameResourceInfos         .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameResourceInfos   }\";");
@@ -112,10 +113,11 @@ namespace ResourceLocator
             sb.AppendLine("// Define event names for UI to C#.");
             sb.AppendLine("export class uiEventNames");
             sb.AppendLine("{");
-            sb.AppendLine($"    public static {ResourceLocatorUISystem.EventNameSelectedDistrictChanged .PadRight(36)} : string = \"{ResourceLocatorUISystem.EventNameSelectedDistrictChanged}\";");
-            sb.AppendLine($"    public static {ResourceLocatorUISystem.EventNameDisplayOptionClicked    .PadRight(36)} : string = \"{ResourceLocatorUISystem.EventNameDisplayOptionClicked   }\";");
-            sb.AppendLine($"    public static {ResourceLocatorUISystem.EventNameColorOptionClicked      .PadRight(36)} : string = \"{ResourceLocatorUISystem.EventNameColorOptionClicked     }\";");
-            sb.AppendLine($"    public static {ResourceLocatorUISystem.EventNameOneColorChanged         .PadRight(36)} : string = \"{ResourceLocatorUISystem.EventNameOneColorChanged        }\";");
+            sb.AppendLine($"    public static {ResourceLocatorUISystem.EventNameSelectedDistrictChanged .PadRight(36)} : string = \"{ResourceLocatorUISystem.EventNameSelectedDistrictChanged }\";");
+            sb.AppendLine($"    public static {ResourceLocatorUISystem.EventNameDisplayOptionClicked    .PadRight(36)} : string = \"{ResourceLocatorUISystem.EventNameDisplayOptionClicked    }\";");
+            sb.AppendLine($"    public static {ResourceLocatorUISystem.EventNameRemoveUnnecessaryClicked.PadRight(36)} : string = \"{ResourceLocatorUISystem.EventNameRemoveUnnecessaryClicked}\";");
+            sb.AppendLine($"    public static {ResourceLocatorUISystem.EventNameColorOptionClicked      .PadRight(36)} : string = \"{ResourceLocatorUISystem.EventNameColorOptionClicked      }\";");
+            sb.AppendLine($"    public static {ResourceLocatorUISystem.EventNameOneColorChanged         .PadRight(36)} : string = \"{ResourceLocatorUISystem.EventNameOneColorChanged         }\";");
             sb.AppendLine("}");
 
             // Write the file to the UI/src folder.
@@ -205,6 +207,8 @@ namespace ResourceLocator
                 displayOptionText.Add(nameof(DisplayOption) + displayOption.ToString());
             }
             displayOptionText.Add(nameof(DisplayOption) + "Tooltip");
+            displayOptionText.Add("RemoveUnnecessary");
+            displayOptionText.Add("UnnecessaryTooltip");
             sb.AppendLine();
             sb.Append(GetTranslationsContent(csFile, "Display option text.", displayOptionText));
 

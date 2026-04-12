@@ -102,7 +102,10 @@ namespace ResourceLocator
         public const string DisplayOptionProduces                              = "ResourceLocator.DisplayOptionProduces";
         public const string DisplayOptionSells                                 = "ResourceLocator.DisplayOptionSells";
         public const string DisplayOptionStores                                = "ResourceLocator.DisplayOptionStores";
+        public const string DisplayOptionUnnecessary                           = "ResourceLocator.DisplayOptionUnnecessary";
         public const string DisplayOptionTooltip                               = "ResourceLocator.DisplayOptionTooltip";
+        public const string RemoveUnnecessary                                  = "ResourceLocator.RemoveUnnecessary";
+        public const string UnnecessaryTooltip                                 = "ResourceLocator.UnnecessaryTooltip";
 
         // Color option text.
         public const string ColorOptionColor                                   = "ResourceLocator.ColorOptionColor";

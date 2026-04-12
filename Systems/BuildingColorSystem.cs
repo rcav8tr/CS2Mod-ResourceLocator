@@ -46,6 +46,14 @@ namespace ResourceLocator
     /// </summary>
     public partial class BuildingColorSystem : GameSystemBase
     {
+        // Define necessary resources.
+        public const Resource NecessaryResources =
+            Resource.Money        |
+            Resource.UnsortedMail |
+            Resource.LocalMail    |
+            Resource.OutgoingMail |
+            Resource.Garbage;
+
         /// <summary>
         /// Information for an active infomode.
         /// </summary>
@@ -408,11 +416,13 @@ namespace ResourceLocator
             [ReadOnly] public NativeArray<NativeArray<int>> StorageAmountsProduces;
             [ReadOnly] public NativeArray<NativeArray<int>> StorageAmountsSells;
             [ReadOnly] public NativeArray<NativeArray<int>> StorageAmountsStores;
+            [ReadOnly] public NativeArray<NativeArray<int>> StorageAmountsUnnecessary;
 
             [ReadOnly] public NativeArray<NativeArray<int>> CompanyCountsRequires;
             [ReadOnly] public NativeArray<NativeArray<int>> CompanyCountsProduces;
             [ReadOnly] public NativeArray<NativeArray<int>> CompanyCountsSells;
             [ReadOnly] public NativeArray<NativeArray<int>> CompanyCountsStores;
+            [ReadOnly] public NativeArray<NativeArray<int>> CompanyCountsUnnecessary;
 
             /// <summary>
             /// Job execution.
@@ -589,23 +599,41 @@ namespace ResourceLocator
                         }
                     }
 
+                    // Get unnecessary resources for this company regardless of company type.
+                    // Combine the predefined necessary resources with company input and output resources.
+                    Resource resourceUnnecessary = Resource.NoResource;
+                    Resource necessaryResources = NecessaryResources | resourceInput1 | resourceInput2 | resourceOutput;
+                    foreach (Resources theResource in bufferResources)
+                    {
+                        // The resource must not be a necessary resource.
+                        if ((theResource.m_Resource & necessaryResources) == 0)
+                        {
+                            // Save the unnecessary resource.
+                            resourceUnnecessary |= theResource.m_Resource;
+                        }
+                    }
+
                     // Set building color according to the display option and the resources found above.
                     switch (DisplayOption)
                     {
-                        case DisplayOption.Requires: SetBuildingColorForActiveInfomode(ref colors, colorsIndex, resourceRequires1, resourceRequires2); break;
-                        case DisplayOption.Produces: SetBuildingColorForActiveInfomode(ref colors, colorsIndex, resourceProduces                    ); break;
-                        case DisplayOption.Sells:    SetBuildingColorForActiveInfomode(ref colors, colorsIndex, resourceSells                       ); break;
-                        case DisplayOption.Stores:   SetBuildingColorForActiveInfomode(ref colors, colorsIndex, resourceStores                      ); break;
+                        case DisplayOption.Requires:    SetBuildingColorForActiveInfomode(ref colors, colorsIndex, resourceRequires1 | resourceRequires2); break;
+                        case DisplayOption.Produces:    SetBuildingColorForActiveInfomode(ref colors, colorsIndex, resourceProduces                     ); break;
+                        case DisplayOption.Sells:       SetBuildingColorForActiveInfomode(ref colors, colorsIndex, resourceSells                        ); break;
+                        case DisplayOption.Stores:      SetBuildingColorForActiveInfomode(ref colors, colorsIndex, resourceStores                       ); break;
+                        case DisplayOption.Unnecessary: SetBuildingColorForActiveInfomode(ref colors, colorsIndex, resourceUnnecessary                  ); break;
                     }
 
                     // Add storage amounts for each resource in the buffer.
                     foreach (Resources resources in bufferResources)
                     {
-                        if (resources.m_Resource == resourceRequires1) { AddStorageAmount(in StorageAmountsRequires, resourceRequires1, resources.m_Amount); }
-                        if (resources.m_Resource == resourceRequires2) { AddStorageAmount(in StorageAmountsRequires, resourceRequires2, resources.m_Amount); }
-                        if (resources.m_Resource == resourceProduces ) { AddStorageAmount(in StorageAmountsProduces, resourceProduces,  resources.m_Amount); }
-                        if (resources.m_Resource == resourceSells    ) { AddStorageAmount(in StorageAmountsSells,    resourceSells,     resources.m_Amount); }
-                        if (resources.m_Resource == resourceStores   ) { AddStorageAmount(in StorageAmountsStores,   resourceStores,    resources.m_Amount); }
+                        Resource resource = resources.m_Resource;
+                        if ( resource == resourceRequires1        ) { AddStorageAmount     (in StorageAmountsRequires,    resource, resources.m_Amount); }
+                        if ( resource == resourceRequires2        ) { AddStorageAmount     (in StorageAmountsRequires,    resource, resources.m_Amount); }
+                        if ( resource == resourceProduces         ) { AddStorageAmount     (in StorageAmountsProduces,    resource, resources.m_Amount); }
+                        if ( resource == resourceSells            ) { AddStorageAmount     (in StorageAmountsSells,       resource, resources.m_Amount); }
+                        if ( resource == resourceStores           ) { AddStorageAmount     (in StorageAmountsStores,      resource, resources.m_Amount); }
+                        if ((resource &  resourceUnnecessary) != 0) { AddStorageAmount     (in StorageAmountsUnnecessary, resource, resources.m_Amount);
+                                                                      IncrementCompanyCount(in CompanyCountsUnnecessary,  resource                    ); }
                     }
 
                     // Increment company counts.
@@ -844,16 +872,14 @@ namespace ResourceLocator
             private void SetBuildingColorForActiveInfomode(
                 ref NativeArray<Color> colors,
                 int colorsIndex,
-                Resource resourceToCheckForActive1,
-                Resource resourceToCheckForActive2 = Resource.NoResource)
+                Resource resourcesToCheckForActive)
             {
                 // Do each active infomode.
                 foreach (ActiveInfomode activeInfomode in ActiveInfomodes)
                 {
-                    // Check if either resource to check is active.
-                    if (resourceToCheckForActive1 == activeInfomode.resource || resourceToCheckForActive2 == activeInfomode.resource)
+                    // Check if this active infomode resource is any of the resources to check.
+                    if ((activeInfomode.resource & resourcesToCheckForActive) != 0)
                     {
-                        // Resource is active.
                         // Set building color according to this active infomode.
                         SetBuildingColor(ref colors, colorsIndex, activeInfomode.infomodeIndex);
 
@@ -1275,25 +1301,29 @@ namespace ResourceLocator
         private NativeArray<NativeArray<int>> _storageAmountsProduces;
         private NativeArray<NativeArray<int>> _storageAmountsSells;
         private NativeArray<NativeArray<int>> _storageAmountsStores;
+        private NativeArray<NativeArray<int>> _storageAmountsUnnecessary;
         private NativeArray<NativeArray<int>> _storageAmountsInTransit;
 
         private NativeArray<NativeArray<int>> _companyCountsRequires;
         private NativeArray<NativeArray<int>> _companyCountsProduces;
         private NativeArray<NativeArray<int>> _companyCountsSells;
         private NativeArray<NativeArray<int>> _companyCountsStores;
+        private NativeArray<NativeArray<int>> _companyCountsUnnecessary;
 
         // Arrays to hold total storage amounts and company counts by resource.
         private static readonly int ResourceCount = EconomyUtils.ResourceCount;
-        private int[] _totalStorageAmountsRequires  = new int[ResourceCount];
-        private int[] _totalStorageAmountsProduces  = new int[ResourceCount];
-        private int[] _totalStorageAmountsSells     = new int[ResourceCount];
-        private int[] _totalStorageAmountsStores    = new int[ResourceCount];
-        private int[] _totalStorageAmountsInTransit = new int[ResourceCount];
+        private int[] _totalStorageAmountsRequires    = new int[ResourceCount];
+        private int[] _totalStorageAmountsProduces    = new int[ResourceCount];
+        private int[] _totalStorageAmountsSells       = new int[ResourceCount];
+        private int[] _totalStorageAmountsStores      = new int[ResourceCount];
+        private int[] _totalStorageAmountsUnnecessary = new int[ResourceCount];
+        private int[] _totalStorageAmountsInTransit   = new int[ResourceCount];
 
-        private int[] _totalCompanyCountsRequires   = new int[ResourceCount];
-        private int[] _totalCompanyCountsProduces   = new int[ResourceCount];
-        private int[] _totalCompanyCountsSells      = new int[ResourceCount];
-        private int[] _totalCompanyCountsStores     = new int[ResourceCount];
+        private int[] _totalCompanyCountsRequires     = new int[ResourceCount];
+        private int[] _totalCompanyCountsProduces     = new int[ResourceCount];
+        private int[] _totalCompanyCountsSells        = new int[ResourceCount];
+        private int[] _totalCompanyCountsStores       = new int[ResourceCount];
+        private int[] _totalCompanyCountsUnnecessary  = new int[ResourceCount];
 
         // Lock for accessing total storage amounts and company counts.
         private readonly object _totalStorageAmountsCompanyCountsLock = new object();
@@ -1500,16 +1530,18 @@ namespace ResourceLocator
             );
 
             // Create nested arrays to hold storage amounts and company counts.
-            _storageAmountsRequires  = ProductionConsumptionUtils.CreateArrays();
-            _storageAmountsProduces  = ProductionConsumptionUtils.CreateArrays();
-            _storageAmountsSells     = ProductionConsumptionUtils.CreateArrays();
-            _storageAmountsStores    = ProductionConsumptionUtils.CreateArrays();
-            _storageAmountsInTransit = ProductionConsumptionUtils.CreateArrays();
+            _storageAmountsRequires    = ProductionConsumptionUtils.CreateArrays();
+            _storageAmountsProduces    = ProductionConsumptionUtils.CreateArrays();
+            _storageAmountsSells       = ProductionConsumptionUtils.CreateArrays();
+            _storageAmountsStores      = ProductionConsumptionUtils.CreateArrays();
+            _storageAmountsUnnecessary = ProductionConsumptionUtils.CreateArrays();
+            _storageAmountsInTransit   = ProductionConsumptionUtils.CreateArrays();
             
-            _companyCountsRequires   = ProductionConsumptionUtils.CreateArrays();
-            _companyCountsProduces   = ProductionConsumptionUtils.CreateArrays();
-            _companyCountsSells      = ProductionConsumptionUtils.CreateArrays();
-            _companyCountsStores     = ProductionConsumptionUtils.CreateArrays();
+            _companyCountsRequires     = ProductionConsumptionUtils.CreateArrays();
+            _companyCountsProduces     = ProductionConsumptionUtils.CreateArrays();
+            _companyCountsSells        = ProductionConsumptionUtils.CreateArrays();
+            _companyCountsStores       = ProductionConsumptionUtils.CreateArrays();
+            _companyCountsUnnecessary  = ProductionConsumptionUtils.CreateArrays();
 
             // Use Harmony to patch ObjectColorSystem.OnUpdate with BuildingColorSystem.OnUpdatePrefix.
             // When this mod's infoview is displayed, it is not necessary to execute ObjectColorSystem.OnUpdate.
@@ -1537,16 +1569,18 @@ namespace ResourceLocator
         protected override void OnDestroy()
         {
             // Dispose of persistent storage amount and company count arrays.
-            ProductionConsumptionUtils.DisposeArrays(in _storageAmountsRequires );
-            ProductionConsumptionUtils.DisposeArrays(in _storageAmountsProduces );
-            ProductionConsumptionUtils.DisposeArrays(in _storageAmountsSells    );
-            ProductionConsumptionUtils.DisposeArrays(in _storageAmountsStores   );
-            ProductionConsumptionUtils.DisposeArrays(in _storageAmountsInTransit);
+            ProductionConsumptionUtils.DisposeArrays(in _storageAmountsRequires   );
+            ProductionConsumptionUtils.DisposeArrays(in _storageAmountsProduces   );
+            ProductionConsumptionUtils.DisposeArrays(in _storageAmountsSells      );
+            ProductionConsumptionUtils.DisposeArrays(in _storageAmountsStores     );
+            ProductionConsumptionUtils.DisposeArrays(in _storageAmountsUnnecessary);
+            ProductionConsumptionUtils.DisposeArrays(in _storageAmountsInTransit  );
             
-            ProductionConsumptionUtils.DisposeArrays(in _companyCountsRequires  );
-            ProductionConsumptionUtils.DisposeArrays(in _companyCountsProduces  );
-            ProductionConsumptionUtils.DisposeArrays(in _companyCountsSells     );
-            ProductionConsumptionUtils.DisposeArrays(in _companyCountsStores    );
+            ProductionConsumptionUtils.DisposeArrays(in _companyCountsRequires    );
+            ProductionConsumptionUtils.DisposeArrays(in _companyCountsProduces    );
+            ProductionConsumptionUtils.DisposeArrays(in _companyCountsSells       );
+            ProductionConsumptionUtils.DisposeArrays(in _companyCountsStores      );
+            ProductionConsumptionUtils.DisposeArrays(in _companyCountsUnnecessary );
 
             base.OnDestroy();
         }
@@ -1618,16 +1652,18 @@ namespace ResourceLocator
             NativeArray<ActiveInfomode> activeInfomodes = new(tempActiveInfomodes.ToArray(), Allocator.TempJob);
 
             // Initialize storage amounts and company counts.
-            ProductionConsumptionUtils.InitializeArrays(in _storageAmountsRequires );
-            ProductionConsumptionUtils.InitializeArrays(in _storageAmountsProduces );
-            ProductionConsumptionUtils.InitializeArrays(in _storageAmountsSells    );
-            ProductionConsumptionUtils.InitializeArrays(in _storageAmountsStores   );
-            ProductionConsumptionUtils.InitializeArrays(in _storageAmountsInTransit);
+            ProductionConsumptionUtils.InitializeArrays(in _storageAmountsRequires   );
+            ProductionConsumptionUtils.InitializeArrays(in _storageAmountsProduces   );
+            ProductionConsumptionUtils.InitializeArrays(in _storageAmountsSells      );
+            ProductionConsumptionUtils.InitializeArrays(in _storageAmountsStores     );
+            ProductionConsumptionUtils.InitializeArrays(in _storageAmountsUnnecessary);
+            ProductionConsumptionUtils.InitializeArrays(in _storageAmountsInTransit  );
             
-            ProductionConsumptionUtils.InitializeArrays(in _companyCountsRequires  );
-            ProductionConsumptionUtils.InitializeArrays(in _companyCountsProduces  );
-            ProductionConsumptionUtils.InitializeArrays(in _companyCountsSells     );
-            ProductionConsumptionUtils.InitializeArrays(in _companyCountsStores    );
+            ProductionConsumptionUtils.InitializeArrays(in _companyCountsRequires    );
+            ProductionConsumptionUtils.InitializeArrays(in _companyCountsProduces    );
+            ProductionConsumptionUtils.InitializeArrays(in _companyCountsSells       );
+            ProductionConsumptionUtils.InitializeArrays(in _companyCountsStores      );
+            ProductionConsumptionUtils.InitializeArrays(in _companyCountsUnnecessary );
 
 
             // Create a job to update default colors.
@@ -1658,8 +1694,8 @@ namespace ResourceLocator
 
                 ActiveInfomodes                     = activeInfomodes,
 
-                SelectedDistrict                    = _resourceLocatorUISystem.selectedDistrict,
-                SelectedDistrictIsEntireCity        = _resourceLocatorUISystem.selectedDistrict == ResourceLocatorUISystem.EntireCity,
+                SelectedDistrict                    = _resourceLocatorUISystem.SelectedDistrict,
+                SelectedDistrictIsEntireCity        = _resourceLocatorUISystem.SelectedDistrict == ResourceLocatorUISystem.EntireCity,
 
                 StorageAmountsInTransit             = _storageAmountsInTransit,
             };
@@ -1710,8 +1746,8 @@ namespace ResourceLocator
                 IncludeEmeregencyShelter                    = Mod.ModSettings.IncludeEmeregencyShelter,
                 IncludeCargoStation                         = Mod.ModSettings.IncludeCargoStation,
 
-                SelectedDistrict                            = _resourceLocatorUISystem.selectedDistrict,
-                SelectedDistrictIsEntireCity                = _resourceLocatorUISystem.selectedDistrict == ResourceLocatorUISystem.EntireCity,
+                SelectedDistrict                            = _resourceLocatorUISystem.SelectedDistrict,
+                SelectedDistrictIsEntireCity                = _resourceLocatorUISystem.SelectedDistrict == ResourceLocatorUISystem.EntireCity,
 
                 DisplayOption                               = Mod.ModSettings.DisplayOption,
                 
@@ -1719,11 +1755,13 @@ namespace ResourceLocator
                 StorageAmountsProduces                      = _storageAmountsProduces,
                 StorageAmountsSells                         = _storageAmountsSells,
                 StorageAmountsStores                        = _storageAmountsStores,
+                StorageAmountsUnnecessary                   = _storageAmountsUnnecessary,
                 
                 CompanyCountsRequires                       = _companyCountsRequires,
                 CompanyCountsProduces                       = _companyCountsProduces,
                 CompanyCountsSells                          = _companyCountsSells,
                 CompanyCountsStores                         = _companyCountsStores,
+                CompanyCountsUnnecessary                    = _companyCountsUnnecessary,
             };
 
 
@@ -1808,16 +1846,18 @@ namespace ResourceLocator
             lock (_totalStorageAmountsCompanyCountsLock)
             {
                 // Accumulate totals.
-                ProductionConsumptionUtils.ConsolidateValues(in _storageAmountsRequires,  out _totalStorageAmountsRequires);
-                ProductionConsumptionUtils.ConsolidateValues(in _storageAmountsProduces,  out _totalStorageAmountsProduces);
-                ProductionConsumptionUtils.ConsolidateValues(in _storageAmountsSells,     out _totalStorageAmountsSells);
-                ProductionConsumptionUtils.ConsolidateValues(in _storageAmountsStores,    out _totalStorageAmountsStores);
-                ProductionConsumptionUtils.ConsolidateValues(in _storageAmountsInTransit, out _totalStorageAmountsInTransit);
+                ProductionConsumptionUtils.ConsolidateValues(in _storageAmountsRequires,    out _totalStorageAmountsRequires);
+                ProductionConsumptionUtils.ConsolidateValues(in _storageAmountsProduces,    out _totalStorageAmountsProduces);
+                ProductionConsumptionUtils.ConsolidateValues(in _storageAmountsSells,       out _totalStorageAmountsSells);
+                ProductionConsumptionUtils.ConsolidateValues(in _storageAmountsStores,      out _totalStorageAmountsStores);
+                ProductionConsumptionUtils.ConsolidateValues(in _storageAmountsUnnecessary, out _totalStorageAmountsUnnecessary);
+                ProductionConsumptionUtils.ConsolidateValues(in _storageAmountsInTransit,   out _totalStorageAmountsInTransit);
                 
-                ProductionConsumptionUtils.ConsolidateValues(in _companyCountsRequires,   out _totalCompanyCountsRequires);
-                ProductionConsumptionUtils.ConsolidateValues(in _companyCountsProduces,   out _totalCompanyCountsProduces);
-                ProductionConsumptionUtils.ConsolidateValues(in _companyCountsSells,      out _totalCompanyCountsSells);
-                ProductionConsumptionUtils.ConsolidateValues(in _companyCountsStores,     out _totalCompanyCountsStores);
+                ProductionConsumptionUtils.ConsolidateValues(in _companyCountsRequires,     out _totalCompanyCountsRequires);
+                ProductionConsumptionUtils.ConsolidateValues(in _companyCountsProduces,     out _totalCompanyCountsProduces);
+                ProductionConsumptionUtils.ConsolidateValues(in _companyCountsSells,        out _totalCompanyCountsSells);
+                ProductionConsumptionUtils.ConsolidateValues(in _companyCountsStores,       out _totalCompanyCountsStores);
+                ProductionConsumptionUtils.ConsolidateValues(in _companyCountsUnnecessary,  out _totalCompanyCountsUnnecessary);
             }
 
             // Complete the rest of the jobs to help prevent screen flicker.
@@ -1839,39 +1879,45 @@ namespace ResourceLocator
             out int[] storageAmountsProduces,
             out int[] storageAmountsSells,
             out int[] storageAmountsStores,
+            out int[] storageAmountsUnnecessary,
             out int[] storageAmountsInTransit,
 
             out int[] companyCountsRequires,
             out int[] companyCountsProduces,
             out int[] companyCountsSells,
-            out int[] companyCountsStores)
+            out int[] companyCountsStores,
+            out int[] companyCountsUnnecessary)
         {
             // Initialize return arrays.
-            storageAmountsRequires  = new int[_totalStorageAmountsRequires .Length];
-            storageAmountsProduces  = new int[_totalStorageAmountsProduces .Length];
-            storageAmountsSells     = new int[_totalStorageAmountsSells    .Length];
-            storageAmountsStores    = new int[_totalStorageAmountsStores   .Length];
-            storageAmountsInTransit = new int[_totalStorageAmountsInTransit.Length];
+            storageAmountsRequires    = new int[_totalStorageAmountsRequires   .Length];
+            storageAmountsProduces    = new int[_totalStorageAmountsProduces   .Length];
+            storageAmountsSells       = new int[_totalStorageAmountsSells      .Length];
+            storageAmountsStores      = new int[_totalStorageAmountsStores     .Length];
+            storageAmountsUnnecessary = new int[_totalStorageAmountsUnnecessary.Length];
+            storageAmountsInTransit   = new int[_totalStorageAmountsInTransit  .Length];
 
-            companyCountsRequires   = new int[_totalCompanyCountsRequires  .Length];
-            companyCountsProduces   = new int[_totalCompanyCountsProduces  .Length];
-            companyCountsSells      = new int[_totalCompanyCountsSells     .Length];
-            companyCountsStores     = new int[_totalCompanyCountsStores    .Length];
+            companyCountsRequires     = new int[_totalCompanyCountsRequires    .Length];
+            companyCountsProduces     = new int[_totalCompanyCountsProduces    .Length];
+            companyCountsSells        = new int[_totalCompanyCountsSells       .Length];
+            companyCountsStores       = new int[_totalCompanyCountsStores      .Length];
+            companyCountsUnnecessary  = new int[_totalCompanyCountsUnnecessary .Length];
 
             // Lock the thread while reading totals.
             lock (_totalStorageAmountsCompanyCountsLock)
             {
                 // Copy storage amounts and company counts to return arrays.
-                Array.Copy(_totalStorageAmountsRequires,  storageAmountsRequires,  _totalStorageAmountsRequires .Length);
-                Array.Copy(_totalStorageAmountsProduces,  storageAmountsProduces,  _totalStorageAmountsProduces .Length);
-                Array.Copy(_totalStorageAmountsSells,     storageAmountsSells,     _totalStorageAmountsSells    .Length);
-                Array.Copy(_totalStorageAmountsStores,    storageAmountsStores,    _totalStorageAmountsStores   .Length);
-                Array.Copy(_totalStorageAmountsInTransit, storageAmountsInTransit, _totalStorageAmountsInTransit.Length);
+                Array.Copy(_totalStorageAmountsRequires,    storageAmountsRequires,    _totalStorageAmountsRequires   .Length);
+                Array.Copy(_totalStorageAmountsProduces,    storageAmountsProduces,    _totalStorageAmountsProduces   .Length);
+                Array.Copy(_totalStorageAmountsSells,       storageAmountsSells,       _totalStorageAmountsSells      .Length);
+                Array.Copy(_totalStorageAmountsStores,      storageAmountsStores,      _totalStorageAmountsStores     .Length);
+                Array.Copy(_totalStorageAmountsUnnecessary, storageAmountsUnnecessary, _totalStorageAmountsUnnecessary.Length);
+                Array.Copy(_totalStorageAmountsInTransit,   storageAmountsInTransit,   _totalStorageAmountsInTransit  .Length);
 
-                Array.Copy(_totalCompanyCountsRequires,   companyCountsRequires,   _totalCompanyCountsRequires  .Length);
-                Array.Copy(_totalCompanyCountsProduces,   companyCountsProduces,   _totalCompanyCountsProduces  .Length);
-                Array.Copy(_totalCompanyCountsSells,      companyCountsSells,      _totalCompanyCountsSells     .Length);
-                Array.Copy(_totalCompanyCountsStores,     companyCountsStores,     _totalCompanyCountsStores    .Length);
+                Array.Copy(_totalCompanyCountsRequires,     companyCountsRequires,     _totalCompanyCountsRequires    .Length);
+                Array.Copy(_totalCompanyCountsProduces,     companyCountsProduces,     _totalCompanyCountsProduces    .Length);
+                Array.Copy(_totalCompanyCountsSells,        companyCountsSells,        _totalCompanyCountsSells       .Length);
+                Array.Copy(_totalCompanyCountsStores,       companyCountsStores,       _totalCompanyCountsStores      .Length);
+                Array.Copy(_totalCompanyCountsUnnecessary,  companyCountsUnnecessary,  _totalCompanyCountsUnnecessary .Length);
             }
         }
     }
