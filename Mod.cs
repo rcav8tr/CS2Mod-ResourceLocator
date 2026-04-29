@@ -18,7 +18,7 @@ namespace ResourceLocator
             .SetShowsStackTraceAboveLevels(Level.Error);    // Include stack trace for severity level Error and above.
 
         // The global settings for this mod.
-        public static ModSettings ModSettings { get; set; }
+        public static ModSettings ModSettings { get; private set; }
 
         // URI for UI images.
         // When the URI is used to access an image, the game forces the URI portion to lower case.

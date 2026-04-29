@@ -1,1 +1,1 @@
-﻿- Locate and allow removal of unnecessary resources from companies.
+﻿- Update for game version 1.5.7.

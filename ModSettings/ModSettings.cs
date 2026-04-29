@@ -8,7 +8,7 @@ namespace ResourceLocator
     /// <summary>
     /// The settings for this mod.
     /// </summary>
-    [FileLocation(nameof(ResourceLocator))]
+    [FileLocation("ModsSettings/" + nameof(ResourceLocator) + "/" + nameof(ResourceLocator))]
     [SettingsUIGroupOrder(GroupInclude, GroupAbout)]
     [SettingsUIShowGroupName(GroupInclude, GroupAbout)]
     public class ModSettings : ModSetting
