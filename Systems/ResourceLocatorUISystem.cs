@@ -356,6 +356,7 @@ namespace ResourceLocator
         {
             // Save the new display option.
             Mod.ModSettings.DisplayOption = (DisplayOption)newDisplayOption;
+            Mod.ModSettings.ApplyAndSave();
 
             // Immediately send the display option back to the UI.
             _bindingDisplayOption.Update(newDisplayOption);
@@ -418,6 +419,7 @@ namespace ResourceLocator
         {
             // Save the new color option.
             Mod.ModSettings.ColorOption = (ColorOption)newColorOption;
+            Mod.ModSettings.ApplyAndSave();
 
             // Immediately send the color option back to the UI.
             _bindingColorOption.Update(newColorOption);
@@ -436,6 +438,7 @@ namespace ResourceLocator
             Mod.ModSettings.OneColorR = newOneColor.r;
             Mod.ModSettings.OneColorG = newOneColor.g;
             Mod.ModSettings.OneColorB = newOneColor.b;
+            Mod.ModSettings.ApplyAndSave();
 
             // Immediately send the one color back to the UI.
             _bindingOneColor.Update(newOneColor);

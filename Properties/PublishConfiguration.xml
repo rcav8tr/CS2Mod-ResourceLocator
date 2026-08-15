@@ -206,10 +206,10 @@ The following mods were used extensively in the development of this mod:
     <ForumLink Value="https://forum.paradoxplaza.com/forum/threads/resource-locator.1725428/" />
 
     <!-- Version of the mod.  Copied from assembly Version. -->
-    <ModVersion Value="2.2.1" />
+    <ModVersion Value="2.2.2" />
 
     <!-- Recommended version of the base game to use the mod. -->
-    <GameVersion Value="1.5.7*" />
+    <GameVersion Value="1.6.0*" />
 
     <!-- Dependency for the mod.  Can be set multiple times. -->
     <Dependency Id="" />
@@ -220,7 +220,7 @@ The following mods were used extensively in the development of this mod:
 
     <!-- Change log.  Copied from ChangeLog.md file.  Supports minimal markdown subset. -->
     <ChangeLog>
-- Update for game version 1.5.7.
+- Do not show color on the lot of a specialized industry.
 </ChangeLog>
 
     <!-- External links.  Can be set multiple times. -->

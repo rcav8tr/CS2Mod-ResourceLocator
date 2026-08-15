@@ -62,7 +62,7 @@ namespace ResourceLocator
 
         // Display mod version in settings.
         [SettingsUISection(GroupAbout)]
-        public string ModVersion { get { return ModAssemblyInfo.Version; } }
+        public string ModVersion => ModAssemblyInfo.Version;
 
 
         // Hidden setting for display option.
@@ -75,6 +75,6 @@ namespace ResourceLocator
         [SettingsUIHidden] public float OneColorR { get; set; }
         [SettingsUIHidden] public float OneColorG { get; set; }
         [SettingsUIHidden] public float OneColorB { get; set; }
-        public Color OneColor => new Color(OneColorR, OneColorG, OneColorB, 1f);
+        public Color OneColor => new(OneColorR, OneColorG, OneColorB, 1f);
     }
 }

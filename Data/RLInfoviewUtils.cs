@@ -121,6 +121,9 @@ namespace ResourceLocator
         /// </summary>
         public static void SetInfomodeColors()
         {
+            // Get the one color in case it is needed.
+            Color oneColor = Mod.ModSettings.OneColor;
+
             // Do each infomode in the infoview prefab.
             foreach (InfomodeInfo infomodeInfo in _infoviewPrefab.m_Infomodes)
             {
@@ -180,7 +183,7 @@ namespace ResourceLocator
                 else
                 {
                     // Use one color from settings for all infomodes.
-                    color = Mod.ModSettings.OneColor;
+                    color = oneColor;
                 }
 
                 // Set the infomode color.

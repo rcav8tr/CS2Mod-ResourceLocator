@@ -971,47 +971,6 @@ namespace ResourceLocator
 
 
         /// <summary>
-        /// Job to set the color of each attachment building to the color of the building to which it is attached.
-        /// Attachment buildings are the lots attached to specialized industry hubs.
-        /// </summary>
-        [BurstCompile]
-        private struct UpdateColorsJobAttachmentBuilding : IJobChunk
-        {
-            // Color component lookup to update.
-            [NativeDisableParallelForRestriction] public ComponentLookup<Color> ComponentLookupColor;
-
-            // Component type handles.
-            [ReadOnly] public ComponentTypeHandle<Attachment> ComponentTypeHandleAttachment;
-
-            // Entity type handle.
-            [ReadOnly] public EntityTypeHandle EntityTypeHandle;
-
-            /// <summary>
-            /// Job execution.
-            /// </summary>
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
-            {
-                // Do each attachment entity.
-                NativeArray<Attachment> attachments = chunk.GetNativeArray(ref ComponentTypeHandleAttachment);
-                NativeArray<Entity    > entities    = chunk.GetNativeArray(EntityTypeHandle);
-                for (int i = 0; i < entities.Length; i++)
-                {
-                    // Get the color of the attached entity.
-                    if (ComponentLookupColor.TryGetComponent(attachments[i].m_Attached, out Color attachedColor))
-                    {
-                        // Set color of this attachment entity to the color of the attached entity.
-                        Entity entity = entities[i];
-                        Color color = ComponentLookupColor[entity];
-                        color.m_Index = attachedColor.m_Index;
-                        color.m_Value = attachedColor.m_Value;
-                        ComponentLookupColor[entity] = color;
-                    }
-                }
-            }
-        }
-
-
-        /// <summary>
         /// Job to set the color of each middle building to the color of its owner.
         /// Middle buildings include sub buildings (i.e. building upgrades placed around the perimeter of the main building).
         /// Logic is adapted from Game.Rendering.ObjectColorSystem.UpdateMiddleObjectColorsJob except:
@@ -1286,7 +1245,6 @@ namespace ResourceLocator
         private EntityQuery _queryDefault;
         private EntityQuery _queryCargoVehicle;
         private EntityQuery _queryMainBuilding;
-        private EntityQuery _queryAttachmentBuilding;
         private EntityQuery _queryMiddleBuilding;
         private EntityQuery _queryTempObject;
         private EntityQuery _querySubObject;
@@ -1432,31 +1390,10 @@ namespace ResourceLocator
                         ComponentType.ReadOnly<Destroyed>(),            // Exclude destroyed buildings.
                         ComponentType.ReadOnly<OutsideConnection>(),    // Exclude outside connections.
 				        ComponentType.ReadOnly<Owner>(),                // Exclude subbuildings (see middle buildings query below).
-                        ComponentType.ReadOnly<Attachment>(),           // Exclude attachments  (see attachments      query below).
+                        ComponentType.ReadOnly<Attachment>(),           // Exclude attachments  (i.e. the lot on a specialized industry).
 				        ComponentType.ReadOnly<Temp>(),                 // Exclude temp         (see temp objects     query below).
 			        }
 		        }
-            );
-
-            // Query to get attachment buildings.
-            // Attachments are the lots attached to specialized industry.
-            _queryAttachmentBuilding = GetEntityQuery
-            (
-                new EntityQueryDesc
-                {
-                    All = new ComponentType[]
-                    {
-                        ComponentType.ReadOnly <Building>(),
-                        ComponentType.ReadOnly <Attachment>(),
-                        ComponentType.ReadWrite<Color>(),
-                    },
-                    None = new ComponentType[]
-                    {
-                        ComponentType.ReadOnly<Owner>(),        // Exclude middle buildings (see middle buildings query below).
-                        ComponentType.ReadOnly<Hidden>(),
-                        ComponentType.ReadOnly<Deleted>(),
-                    }
-                }
             );
 
             // Query to get middle buildings.
@@ -1474,7 +1411,7 @@ namespace ResourceLocator
                     },
                     None = new ComponentType[]
                     {
-                        ComponentType.ReadOnly<Attachment>(),   // Exclude attachments (see attachment buildings query above).
+                        ComponentType.ReadOnly<Attachment>(),   // Exclude attachments (i.e. the lot on a specialized industry).
                         ComponentType.ReadOnly<Hidden>(),
                         ComponentType.ReadOnly<Deleted>(),
                     }
@@ -1765,15 +1702,6 @@ namespace ResourceLocator
             };
 
 
-            // Create a job to update attachment building colors.
-            UpdateColorsJobAttachmentBuilding updateColorsJobAttachmentBuilding = new()
-            {
-                ComponentLookupColor            = SystemAPI.GetComponentLookup<Color>(false),
-                ComponentTypeHandleAttachment   = SystemAPI.GetComponentTypeHandle<Attachment>(true),
-                EntityTypeHandle                = SystemAPI.GetEntityTypeHandle(),
-            };
-
-
             // Create a job to update middle building colors.
             UpdateColorsJobMiddleBuilding updateColorsJobMiddleBuilding = new()
             {
@@ -1825,12 +1753,10 @@ namespace ResourceLocator
             // The cargo vehicle and main building jobs can run at the same time as each other but only after the default job.
             // Schedule each job to execute in parallel (i.e. job uses multiple threads, if available).
             // Parallel threads execute much faster than a single thread.
-            // Do attachment buildings before middle buildings because some middle buildings have an attachment building as owner.
             JobHandle jobHandleDefault            = JobChunkExtensions.ScheduleParallel(updateColorsJobDefault,            _queryDefault,            base.Dependency);
             JobHandle jobHandleCargoVehicle       = JobChunkExtensions.ScheduleParallel(updateColorsJobCargoVehicle,       _queryCargoVehicle,       jobHandleDefault);
             JobHandle jobHandleMainBuilding       = JobChunkExtensions.ScheduleParallel(updateColorsJobMainBuilding,       _queryMainBuilding,       jobHandleDefault);
-            JobHandle jobHandleAttachmentBuilding = JobChunkExtensions.ScheduleParallel(updateColorsJobAttachmentBuilding, _queryAttachmentBuilding, jobHandleMainBuilding);
-            JobHandle jobHandleMiddleBuilding     = JobChunkExtensions.ScheduleParallel(updateColorsJobMiddleBuilding,     _queryMiddleBuilding,     jobHandleAttachmentBuilding);
+            JobHandle jobHandleMiddleBuilding     = JobChunkExtensions.ScheduleParallel(updateColorsJobMiddleBuilding,     _queryMiddleBuilding,     jobHandleMainBuilding);
             JobHandle jobHandleTempObject         = JobChunkExtensions.ScheduleParallel(updateColorsJobTempObject,         _queryTempObject,         jobHandleMiddleBuilding);
             JobHandle jobHandleSubObject          = JobChunkExtensions.ScheduleParallel(updateColorsJobSubObject,          _querySubObject,          jobHandleTempObject);
 
