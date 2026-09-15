@@ -1,1 +1,1 @@
-﻿- Do not show color on the lot of a specialized industry.
+﻿- Update for game version 1.6.2.

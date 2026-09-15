@@ -7,7 +7,7 @@
 		<!--The file where mod information which is required for publishing mod on PDX mods are stored-->
 		<PublishConfigurationPath>Properties\PublishConfiguration.xml</PublishConfigurationPath>
 		<Title>Resource Locator</Title>
-		<Version>2.2.2</Version>
+		<Version>2.2.3</Version>
 		<Description>New info view to locate buildings where resources are required, produced, sold, and stored.</Description>
 		<Copyright>Copyright © 2025-2026</Copyright>
         <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
