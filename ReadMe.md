@@ -40,6 +40,14 @@ If your city has no districts:
 - Only one **Display Option** can be selected at a time.
 - **Display Option** does not affect **Cargo Vehicles** (see below).
 
+### Data Option
+- Show the latest or average data for production and surplus/deficit.
+- **Latest** shows the most recent data.
+- **Average** shows the data averaged over 1 game day.
+  Resource consumption (and therefore surplus/deficit) can change drastically over the course of one game day.
+  For example, Food, Beverages, and Telecom are consumed more during the day than at night.
+  The Production Balance feature of the **Change Company** mod uses **Average** in its calculations.
+
 ### Color Option
 - Use multiple colors or one color for the resources.
 - Use **Multiple** when you have many or all resources selected and you want to differentiate between them.

@@ -105,6 +105,12 @@ export class UITranslationKey
     public static RemoveUnnecessary                                 : string = "ResourceLocator.RemoveUnnecessary";
     public static UnnecessaryTooltip                                : string = "ResourceLocator.UnnecessaryTooltip";
 
+    // Data option text.
+    public static DataOptionData                                    : string = "ResourceLocator.DataOptionData";
+    public static DataOptionLatest                                  : string = "ResourceLocator.DataOptionLatest";
+    public static DataOptionAverage                                 : string = "ResourceLocator.DataOptionAverage";
+    public static DataOptionTooltip                                 : string = "ResourceLocator.DataOptionTooltip";
+
     // Color option text.
     public static ColorOptionColor                                  : string = "ResourceLocator.ColorOptionColor";
     public static ColorOptionMultiple                               : string = "ResourceLocator.ColorOptionMultiple";

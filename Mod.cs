@@ -4,6 +4,7 @@ using Colossal.UI;
 using Game;
 using Game.Modding;
 using Game.SceneFlow;
+using Game.Simulation;
 using System;
 using System.IO;
 
@@ -54,13 +55,12 @@ namespace ResourceLocator
 
                 // Initialize the infoview.
                 RLInfoviewUtils.Initialize();
-                
-                // Initialize production/surplus.
-                ProductionSurplus.Initialize();
 
                 // Create and activate this mod's systems.
                 updateSystem.UpdateAt<ResourceLocatorUISystem>(SystemUpdatePhase.UIUpdate);
                 updateSystem.UpdateAt<BuildingColorSystem>(SystemUpdatePhase.Rendering);
+                updateSystem.UpdateAfter<CityResourceUsageSystem, CityProductionStatisticSystem>(SystemUpdatePhase.GameSimulation);
+                updateSystem.UpdateAfter<ProductionSurplusSystem, CityResourceUsageSystem>(SystemUpdatePhase.GameSimulation);
 
 #if DEBUG
                 // Get localized text from the game where the value is or contains specific text.
@@ -72,7 +72,7 @@ namespace ResourceLocator
                 //    {
                 //        //if (keyValue.Value.ToLower().Contains("companies"))
                 //        //if (keyValue.Value.StartsWith("Cargo"))
-                //        if (keyValue.Value.ToLower() == "raw materials" || keyValue.Value.ToLower() == "processed goods")
+                //        if (keyValue.Value.ToLower() == "average")
                 //        {
                 //            log.Info(keyValue.Key + "\t" + keyValue.Value);
                 //        }

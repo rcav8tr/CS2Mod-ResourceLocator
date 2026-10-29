@@ -2,6 +2,7 @@
 import { ModuleRegistryExtend   } from "cs2/modding";
 
 import { ColorOptions           } from "colorOptions";
+import { DataOptions            } from "dataOptions";
 import { DisplayOptions         } from "displayOptions";
 import { DistrictSelector       } from "districtSelector";
 import { Heading                } from "heading";
@@ -31,6 +32,7 @@ export const InfomodeItemExtend: ModuleRegistryExtend = (Component: any) =>
             // Check for special cases.
             if (buildingType === RLBuildingType.District      ) { return (<DistrictSelector />); }
             if (buildingType === RLBuildingType.DisplayOption ) { return (<DisplayOptions   />); }
+            if (buildingType === RLBuildingType.DataOption    ) { return (<DataOptions      />); }
             if (buildingType === RLBuildingType.ColorOption   ) { return (<ColorOptions     />); }
             if (buildingType === RLBuildingType.SelectDeselect) { return (<SelectDeselect   />); }
             if (buildingType === RLBuildingType.MaxValues     ) { return (<></>               ); }

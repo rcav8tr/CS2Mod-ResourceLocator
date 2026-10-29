@@ -11,6 +11,7 @@
 
         District,
         DisplayOption,
+        DataOption,
         ColorOption,
         SelectDeselect,
 

@@ -1,1 +1,1 @@
-﻿- Update for game version 1.6.2.
+﻿- Allow displaying production and surplus/deficit values as latest or average over 1 game day.

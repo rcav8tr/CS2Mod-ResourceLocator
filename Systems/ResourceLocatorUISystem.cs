@@ -7,6 +7,7 @@ using Game.Common;
 using Game.Companies;
 using Game.Economy;
 using Game.Prefabs;
+using Game.SceneFlow;
 using Game.Tools;
 using Game.UI;
 using Game.UI.InGame;
@@ -28,6 +29,13 @@ namespace ResourceLocator
         Unnecessary,
     }
 
+    // Define data options.
+    public enum DataOption
+    {
+        Latest,
+        Average,
+    }
+
     // Define color options.
     public enum ColorOption
     {
@@ -42,19 +50,23 @@ namespace ResourceLocator
     {
         // Variables to track when updates should occur.
         private long _previousBindingUpdateTicks;
-        private bool _previouslyDisplayed;
+        private bool _gameLoadingComplete;
 
-        // Other systems.
-        private BuildingColorSystem _buildingColorSystem;
-        private NameSystem          _nameSystem;
-        private ResourceSystem      _resourceSystem;
-        private ToolSystem          _toolSystem;
+        // This mod's systems.
+        private BuildingColorSystem     _buildingColorSystem;
+        private ProductionSurplusSystem _productionSurplusSystem;
+
+        // Other game systems.
+        private NameSystem              _nameSystem;
+        private ResourceSystem          _resourceSystem;
+        private ToolSystem              _toolSystem;
 
         // C# to UI binding names.
         public const string BindingNameSelectedDistrict = "SelectedDistrict";
         public const string BindingNameDistrictInfos    = "DistrictInfos";
         public const string BindingNameDisplayOption    = "DisplayOption";
         public const string BindingNameHasUnnecessary   = "HasUnnecessary";
+        public const string BindingNameDataOption       = "DataOption";
         public const string BindingNameColorOption      = "ColorOption";
         public const string BindingNameOneColor         = "OneColor";
         public const string BindingNameResourceInfos    = "ResourceInfos";
@@ -64,6 +76,7 @@ namespace ResourceLocator
         private RawValueBinding         _bindingDistrictInfos;
         private ValueBinding<int>       _bindingDisplayOption;
         private ValueBinding<bool>      _bindingHasUnnecessary;
+        private ValueBinding<int>       _bindingDataOption;
         private ValueBinding<int>       _bindingColorOption;
         private ValueBinding<Color>     _bindingOneColor;
         private RawValueBinding         _bindingResourceInfos;
@@ -72,6 +85,7 @@ namespace ResourceLocator
         public const string EventNameSelectedDistrictChanged    = "SelectedDistrictChanged";
         public const string EventNameDisplayOptionClicked       = "DisplayOptionClicked";
         public const string EventNameRemoveUnnecessaryClicked   = "RemoveUnnecessaryClicked";
+        public const string EventNameDataOptionClicked          = "DataOptionClicked";
         public const string EventNameColorOptionClicked         = "ColorOptionClicked";
         public const string EventNameOneColorChanged            = "OneColorChanged";
 
@@ -91,17 +105,20 @@ namespace ResourceLocator
             
             try
             {
-                // Get other systems.
-                _buildingColorSystem    = base.World.GetOrCreateSystemManaged<BuildingColorSystem>();
-                _nameSystem             = base.World.GetOrCreateSystemManaged<NameSystem>();
-                _resourceSystem         = base.World.GetOrCreateSystemManaged<ResourceSystem>();
-                _toolSystem             = base.World.GetOrCreateSystemManaged<ToolSystem>();
+                // Get systems.
+                _buildingColorSystem     = World.GetOrCreateSystemManaged<BuildingColorSystem>();
+                _productionSurplusSystem = World.GetOrCreateSystemManaged<ProductionSurplusSystem>();
+
+                _nameSystem              = World.GetOrCreateSystemManaged<NameSystem>();
+                _resourceSystem          = World.GetOrCreateSystemManaged<ResourceSystem>();
+                _toolSystem              = World.GetOrCreateSystemManaged<ToolSystem>();
 
                 // Add bindings for C# to UI.
                 AddBinding(_bindingSelectedDistrict = new ValueBinding<Entity>(ModAssemblyInfo.Name, BindingNameSelectedDistrict, EntireCity));
                 AddBinding(_bindingDistrictInfos    = new RawValueBinding     (ModAssemblyInfo.Name, BindingNameDistrictInfos,    WriteDistrictInfos));
                 AddBinding(_bindingDisplayOption    = new ValueBinding<int>   (ModAssemblyInfo.Name, BindingNameDisplayOption,    (int)Mod.ModSettings.DisplayOption));
                 AddBinding(_bindingHasUnnecessary   = new ValueBinding<bool>  (ModAssemblyInfo.Name, BindingNameHasUnnecessary,   false));
+                AddBinding(_bindingDataOption       = new ValueBinding<int>   (ModAssemblyInfo.Name, BindingNameDataOption,       (int)Mod.ModSettings.DataOption));
                 AddBinding(_bindingColorOption      = new ValueBinding<int>   (ModAssemblyInfo.Name, BindingNameColorOption,      (int)Mod.ModSettings.ColorOption));
                 AddBinding(_bindingOneColor         = new ValueBinding<Color> (ModAssemblyInfo.Name, BindingNameOneColor,         Mod.ModSettings.OneColor));
                 AddBinding(_bindingResourceInfos    = new RawValueBinding     (ModAssemblyInfo.Name, BindingNameResourceInfos,    WriteResourceInfos));
@@ -110,6 +127,7 @@ namespace ResourceLocator
                 AddBinding(new TriggerBinding<Entity>(ModAssemblyInfo.Name, EventNameSelectedDistrictChanged,   SelectedDistrictChanged ));
                 AddBinding(new TriggerBinding<int   >(ModAssemblyInfo.Name, EventNameDisplayOptionClicked,      DisplayOptionClicked    ));
                 AddBinding(new TriggerBinding        (ModAssemblyInfo.Name, EventNameRemoveUnnecessaryClicked,  RemoveUnnecessaryClicked));
+                AddBinding(new TriggerBinding<int   >(ModAssemblyInfo.Name, EventNameDataOptionClicked,         DataOptionClicked       ));
                 AddBinding(new TriggerBinding<int   >(ModAssemblyInfo.Name, EventNameColorOptionClicked,        ColorOptionClicked      ));
                 AddBinding(new TriggerBinding<Color >(ModAssemblyInfo.Name, EventNameOneColorChanged,           OneColorChanged         ));
 
@@ -150,13 +168,14 @@ namespace ResourceLocator
                 out int[] companyCountsStores,
                 out int[] companyCountsUnnecessary);
 
-            // It is desired to use the same production and surplus data as the Production tab of the Economy view.
-            // The Production tab data comes from the ProductionUISystem.
-            // But ProductionUISystem updates only 32 times per game day, which is one update every 45 game minutes.
-            // Get production and surplus amounts now.
-            // Ignore company productions.
-            // Always write the values, even if not valid.
-            bool productionSurplusValid = ProductionSurplus.GetAmounts(out int[] productionAmounts, out int[] surplusAmounts, out _);
+            // Get production and surplus amounts.
+            // Ignore company productions, only current or average are used.
+            _productionSurplusSystem.GetAmounts(
+                out int[] currentProductions,
+                out int[] currentSurpluses,
+                out int[] averageProductions,
+                out int[] averageSurpluses,
+                out _);
 
             // Define variables to hold maximum of each value.
             int maxStorageRequires    = 0;
@@ -190,6 +209,20 @@ namespace ResourceLocator
                 Resource resource = RLBuildingTypeUtils.GetResource(buildingType);
                 int resourceIndex = EconomyUtils.GetResourceIndex(resource);
 
+                // Get production amount and surplus amount based on selected data option.
+                int productionAmount;
+                int surplusAmount;
+                if (Mod.ModSettings.DataOption == DataOption.Latest)
+                {
+                    productionAmount = currentProductions[resourceIndex];
+                    surplusAmount    = currentSurpluses  [resourceIndex];
+                }
+                else
+                {
+                    productionAmount = averageProductions[resourceIndex];
+                    surplusAmount    = averageSurpluses  [resourceIndex];
+                }
+
                 // Compute max values.
                 maxStorageRequires    = Math.Max(maxStorageRequires,    storageAmountsRequires   [resourceIndex]);
                 maxStorageProduces    = Math.Max(maxStorageProduces,    storageAmountsProduces   [resourceIndex]);
@@ -198,8 +231,8 @@ namespace ResourceLocator
                 maxStorageUnnecessary = Math.Max(maxStorageUnnecessary, storageAmountsUnnecessary[resourceIndex]);
                 maxStorageInTransit   = Math.Max(maxStorageInTransit,   storageAmountsInTransit  [resourceIndex]);
 
-                maxProduction         = Math.Max(maxProduction,         productionAmounts        [resourceIndex]);
-                maxSurplus            = Math.Max(maxSurplus,   Math.Abs(surplusAmounts           [resourceIndex]));
+                maxProduction         = Math.Max(maxProduction, productionAmount);
+                maxSurplus            = Math.Max(maxSurplus, Math.Abs(surplusAmount));
 
                 // Get whether or not building type has weight.
                 bool hasWeight = EconomyUtils.IsResourceHasWeight(resource, resourcePrefabs, ref componentLookupResourceData);
@@ -220,9 +253,8 @@ namespace ResourceLocator
                     StorageAmountStores      = storageAmountsStores     [resourceIndex],
                     StorageAmountUnnecessary = storageAmountsUnnecessary[resourceIndex],
                     StorageAmountInTransit   = storageAmountsInTransit  [resourceIndex],
-                    RateValid                = productionSurplusValid,  
-                    RateProduction           = productionAmounts        [resourceIndex],
-                    RateSurplus              = surplusAmounts           [resourceIndex],
+                    RateProduction           = productionAmount,
+                    RateSurplus              = surplusAmount,
                     CompanyCountRequires     = companyCountsRequires    [resourceIndex],
                     CompanyCountProduces     = companyCountsProduces    [resourceIndex],
                     CompanyCountSells        = companyCountsSells       [resourceIndex],
@@ -245,7 +277,6 @@ namespace ResourceLocator
                 StorageAmountStores      = maxStorageStores,
                 StorageAmountUnnecessary = maxStorageUnnecessary,
                 StorageAmountInTransit   = maxStorageInTransit,
-                RateValid                = false,
                 RateProduction           = maxProduction, 
                 RateSurplus              = maxSurplus, 
                 CompanyCountRequires     = 0,
@@ -256,7 +287,7 @@ namespace ResourceLocator
                 HasWeight                = false
             });
 
-            // Write resource infos to the UI.
+            // Always write resource infos to the UI.
             resourceInfos.Write(writer);
 
             // Update whether or not selected district has unnecessary resources.
@@ -413,6 +444,22 @@ namespace ResourceLocator
         }
 
         /// <summary>
+        /// Event callback for data option clicked.
+        /// </summary>
+        private void DataOptionClicked(int newDataOption)
+        {
+            // Save the new data option.
+            Mod.ModSettings.DataOption = (DataOption)newDataOption;
+            Mod.ModSettings.ApplyAndSave();
+
+            // Immediately send the data option back to the UI.
+            _bindingDataOption.Update(newDataOption);
+
+            // Immediately update bindings.
+            _previousBindingUpdateTicks = 0L;
+        }
+
+        /// <summary>
         /// Event callback for color option clicked.
         /// </summary>
         private void ColorOptionClicked(int newColorOption)
@@ -449,8 +496,21 @@ namespace ResourceLocator
         }
 
         /// <summary>
+        /// Called when a game, main menu, editor, etc. is about to be loaded.
+        /// </summary>
+        [Preserve]
+        protected override void OnGamePreload(Purpose purpose, Game.GameMode mode)
+        {
+            base.OnGamePreload(purpose, mode);
+
+            // Game loading is not complete.
+            _gameLoadingComplete = false;
+        }
+
+        /// <summary>
         /// Called when a game is done being loaded.
         /// </summary>
+        [Preserve]
         protected override void OnGameLoadingComplete(Purpose purpose, Game.GameMode mode)
         {
             base.OnGameLoadingComplete(purpose, mode);
@@ -467,7 +527,9 @@ namespace ResourceLocator
 
                 // Initialize updating variables.
                 _previousBindingUpdateTicks = 0L;
-                _previouslyDisplayed = false;
+
+                // Game loading is complete.
+                _gameLoadingComplete = true;
             }
         }
 
@@ -484,35 +546,26 @@ namespace ResourceLocator
         /// <summary>
         /// Called every frame, even when at the main menu.
         /// </summary>
+        [Preserve]
         protected override void OnUpdate()
         {
             base.OnUpdate();
 
-            // An infoview must be active.
-            if (_toolSystem.activeInfoview == null)
+            // Must be in a game with game loading complete
+            if (GameManager.instance.gameMode != Game.GameMode.Game || !_gameLoadingComplete)
             {
-                _previouslyDisplayed = false;
                 return;
             }
 
-            // Active infoview must be for this mod.
+            // Check if an infoview is active and the active infoview is for this mod.
             // The name of this mod's only infoview is the mod assembly name.
-            string activeInfoviewName = _toolSystem.activeInfoview.name;
-            if (activeInfoviewName == ModAssemblyInfo.Name)
+            if (_toolSystem.activeInfoview != null && _toolSystem.activeInfoview.name == ModAssemblyInfo.Name)
             {
-                // Active infoview is for this mod.
-
                 // Check for a change in districts.
                 // Note that if the districts change while there is no active infoview or the active infoview is not for this mod
                 // (e.g. the last selected district is deleted), then it will take a frame for the district infos to be updated.
                 // So for one frame, the district dropdown might be blank.  This is acceptable.
                 CheckForDistrictChange();
-
-                // If this infoview was not previously displayed, update resource infos immediately.
-                if (!_previouslyDisplayed)
-                {
-                    _previousBindingUpdateTicks = 0L;
-                }
 
                 // Update resource infos every 1 second.
                 long currentTicks = DateTime.Now.Ticks;
@@ -524,14 +577,6 @@ namespace ResourceLocator
                     // Update resource infos.
                     _bindingResourceInfos.Update();
                 }
-
-                // This infoview is previously displayed.
-                _previouslyDisplayed = true;
-            }
-            else
-            {
-                // Active infoview is not for this mod.
-                _previouslyDisplayed = false;
             }
         }
     }

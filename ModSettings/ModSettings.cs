@@ -40,6 +40,8 @@ namespace ResourceLocator
 
             DisplayOption = DisplayOption.Requires;
 
+            DataOption = DataOption.Latest;
+
             ColorOption = ColorOption.Multiple;
 
             OneColorR = 1f;
@@ -67,6 +69,9 @@ namespace ResourceLocator
 
         // Hidden setting for display option.
         [SettingsUIHidden] public DisplayOption DisplayOption { get; set; }
+
+        // Hidden setting for data option.
+        [SettingsUIHidden] public DataOption DataOption { get; set; }
 
         // Hidden setting for color option.
         [SettingsUIHidden] public ColorOption ColorOption { get; set; }

@@ -16,6 +16,7 @@ namespace ResourceLocator
                 buildingType == RLBuildingType.None                     ||
                 buildingType == RLBuildingType.District                 ||
                 buildingType == RLBuildingType.DisplayOption            ||
+                buildingType == RLBuildingType.DataOption               ||
                 buildingType == RLBuildingType.ColorOption              ||
                 buildingType == RLBuildingType.SelectDeselect           ||
                 buildingType == RLBuildingType.HeadingRawMaterials      ||

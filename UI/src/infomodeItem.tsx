@@ -32,7 +32,6 @@ type ResourceInfo =
     storageAmountUnnecessary:   number;
     storageAmountInTransit:     number;
 
-    rateValid:                  boolean;
     rateProduction:             number;
     rateSurplus:                number;
 
@@ -103,7 +102,6 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     let valueStorageUnnecessary:   number = 0;
     let valueStorageInTransit:     number = 0;
                                    
-    let valueRateValid:            boolean = false;
     let valueRateProduction:       number = 0;
     let valueRateSurplus:          number = 0;
                                    
@@ -132,7 +130,6 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
             valueStorageUnnecessary   = resourceInfo.storageAmountUnnecessary;
             valueStorageInTransit     = resourceInfo.storageAmountInTransit;
                                       
-            valueRateValid            = resourceInfo.rateValid;
             valueRateProduction       = resourceInfo.rateProduction;
             valueRateSurplus          = resourceInfo.rateSurplus;
                                       
@@ -380,12 +377,6 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     const formattedCompaniesStores:      string = FormatValue(valueCompaniesStores,      "", "");
     const formattedCompaniesUnnecessary: string = FormatValue(valueCompaniesUnnecessary, "", "");
 
-    // Check for invalid rates.
-    if (!valueRateValid)
-    {
-        formattedRateProduction = formattedRateSurplusDeficit = "" + translate("EconomyPanel.NO_PRODUCTION_DATA");
-    }
-
     // Compute styles to set text color based on display option.
     const styleColorRequires:       Partial<CSSProperties> = displayOption === DisplayOption.Requires    ? { color: "var(--resourceLocatorStorageColor)" } : {};
     const styleColorProduces:       Partial<CSSProperties> = displayOption === DisplayOption.Produces    ? { color: "var(--resourceLocatorStorageColor)" } : {};
@@ -393,8 +384,8 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
     const styleColorStores:         Partial<CSSProperties> = displayOption === DisplayOption.Stores      ? { color: "var(--resourceLocatorStorageColor)" } : {};
     const styleColorUnnecessary:    Partial<CSSProperties> = displayOption === DisplayOption.Unnecessary ? { color: "var(--resourceLocatorStorageColor)" } : {};
 
-    const styleColorProduction:     Partial<CSSProperties> = valueRateValid && displayOption === DisplayOption.Produces ? { color: "var(--resourceLocatorProductionColor)" } : {};
-    const styleColorSurplusDeficit: Partial<CSSProperties> = valueRateValid && displayOption === DisplayOption.Produces ? { color: valueRateDeficit > 0 ? "var(--resourceLocatorDeficitColor)" : "var(--resourceLocatorSurplusColor)" } : {};
+    const styleColorProduction:     Partial<CSSProperties> = displayOption === DisplayOption.Produces    ? { color: "var(--resourceLocatorProductionColor)" } : {};
+    const styleColorSurplusDeficit: Partial<CSSProperties> = displayOption === DisplayOption.Produces    ? { color: valueRateDeficit > 0 ? "var(--resourceLocatorDeficitColor)" : "var(--resourceLocatorSurplusColor)" } : {};
 
     // Get icon based on building type.
     // This logic assumes all building type enum names are the same as the resource file names.
@@ -409,9 +400,6 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
                                                     Math.min(Math.round(infomode.color.b * 255), 255) + ",1)" :
             "rgba(0, 0, 0, 1)"
     }
-    
-    // Function to join classes.
-    function joinClasses(...classes: any) { return classes.join(" "); }
 
     // Handle button click.
     function onButtonClick()
@@ -508,10 +496,10 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
             children=
             {
                 <button
-                    className={joinClasses(ModuleResolver.instance.TransparentButtonClasses.button,
-                                           ModuleResolver.instance.InfomodeItemClasses.infomodeItem,
-                                           (infomode.active ? ModuleResolver.instance.InfomodeItemClasses.active : ""),
-                                           styles.resourceLocatorInfomodeButton)}
+                    className={`${ModuleResolver.instance.TransparentButtonClasses.button}
+                                ${ModuleResolver.instance.InfomodeItemClasses.infomodeItem}
+                                ${(infomode.active ? ModuleResolver.instance.InfomodeItemClasses.active : "")}
+                                ${styles.resourceLocatorInfomodeButton}`}
                     onClick={() => onButtonClick()}
                 >
                     <div className={ModuleResolver.instance.InfomodeItemClasses.header}>
@@ -520,9 +508,9 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
                             {
                                 colorOption === ColorOption.Multiple &&
                                 (
-                                    <div className={joinClasses(ModuleResolver.instance.ColorLegendClasses.symbol,
-                                                                ModuleResolver.instance.InfomodeItemClasses.color,
-                                                                styles.resourceLocatorInfomodeColorSymbol)} style={styleSymbol}></div>
+                                    <div className={`${ModuleResolver.instance.ColorLegendClasses.symbol}
+                                                     ${ModuleResolver.instance.InfomodeItemClasses.color}
+                                                     ${styles.resourceLocatorInfomodeColorSymbol}`} style={styleSymbol}></div>
                                 )
                             }
                             {
@@ -570,14 +558,14 @@ export const InfomodeItem = ({ infomode, buildingType }: InfomodeItemProps) =>
                                     </div>
                                 )
                             }
-                            <div className={joinClasses(ModuleResolver.instance.InfomodeItemClasses.type,
-                                                        styles.resourceLocatorInfomodeBuildingColor)}>
+                            <div className={`${ModuleResolver.instance.InfomodeItemClasses.type}
+                                             ${styles.resourceLocatorInfomodeBuildingColor}`}>
                                 {translationBuildingColor}
-                                <div className={joinClasses(ModuleResolver.instance.CheckboxClasses.toggle,
-                                    ModuleResolver.instance.InfomodeItemClasses.checkbox,
-                                    (infomode.active ? "checked" : "unchecked"))}>
-                                    <div className={joinClasses(ModuleResolver.instance.CheckboxClasses.checkmark,
-                                        (infomode.active ? "checked" : ""))}></div>
+                                <div className={`${ModuleResolver.instance.CheckboxClasses.toggle}
+                                                 ${ModuleResolver.instance.InfomodeItemClasses.checkbox}
+                                                 ${(infomode.active ? "checked" : "unchecked")}`}>
+                                    <div className={`${ModuleResolver.instance.CheckboxClasses.checkmark}
+                                                     ${(infomode.active ? "checked" : "")}`}></div>
                                 </div>
                             </div>
                         </div>

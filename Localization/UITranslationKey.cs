@@ -107,6 +107,12 @@ namespace ResourceLocator
         public const string RemoveUnnecessary                                  = "ResourceLocator.RemoveUnnecessary";
         public const string UnnecessaryTooltip                                 = "ResourceLocator.UnnecessaryTooltip";
 
+        // Data option text.
+        public const string DataOptionData                                     = "ResourceLocator.DataOptionData";
+        public const string DataOptionLatest                                   = "ResourceLocator.DataOptionLatest";
+        public const string DataOptionAverage                                  = "ResourceLocator.DataOptionAverage";
+        public const string DataOptionTooltip                                  = "ResourceLocator.DataOptionTooltip";
+
         // Color option text.
         public const string ColorOptionColor                                   = "ResourceLocator.ColorOptionColor";
         public const string ColorOptionMultiple                                = "ResourceLocator.ColorOptionMultiple";

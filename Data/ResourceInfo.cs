@@ -19,7 +19,6 @@ namespace ResourceLocator
         public int StorageAmountInTransit   { get; set; }
 
         // Rate data.
-        public bool RateValid               { get; set; }
         public int RateProduction           { get; set; }
         public int RateSurplus              { get; set; }
 
@@ -53,8 +52,6 @@ namespace ResourceLocator
 			writer.Write(StorageAmountUnnecessary);
 			writer.PropertyName("storageAmountInTransit");
 			writer.Write(StorageAmountInTransit);
-			writer.PropertyName("rateValid");
-			writer.Write(RateValid);
 			writer.PropertyName("rateProduction");
 			writer.Write(RateProduction);
 			writer.PropertyName("rateSurplus");

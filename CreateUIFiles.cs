@@ -70,6 +70,17 @@ namespace ResourceLocator
             }
             sb.AppendLine("}");
 
+            // Include data options.
+            sb.AppendLine();
+            sb.AppendLine("// Define data options.");
+            sb.AppendLine("export enum " + nameof(DataOption));
+            sb.AppendLine("{");
+            foreach (DataOption dataOption in Enum.GetValues(typeof(DataOption)))
+            {
+                sb.AppendLine($"    {dataOption.ToString().PadRight(32)} = {(int)dataOption},");
+            }
+            sb.AppendLine("}");
+
             // Include color options.
             sb.AppendLine();
             sb.AppendLine("// Define color options.");
@@ -103,6 +114,7 @@ namespace ResourceLocator
             sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameDistrictInfos         .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameDistrictInfos   }\";");
             sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameDisplayOption         .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameDisplayOption   }\";");
             sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameHasUnnecessary        .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameHasUnnecessary  }\";");
+            sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameDataOption            .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameDataOption      }\";");
             sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameColorOption           .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameColorOption     }\";");
             sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameOneColor              .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameOneColor        }\";");
             sb.AppendLine($"    public static {ResourceLocatorUISystem.BindingNameResourceInfos         .PadRight(36)} : string = \"{ResourceLocatorUISystem.BindingNameResourceInfos   }\";");
@@ -116,6 +128,7 @@ namespace ResourceLocator
             sb.AppendLine($"    public static {ResourceLocatorUISystem.EventNameSelectedDistrictChanged .PadRight(36)} : string = \"{ResourceLocatorUISystem.EventNameSelectedDistrictChanged }\";");
             sb.AppendLine($"    public static {ResourceLocatorUISystem.EventNameDisplayOptionClicked    .PadRight(36)} : string = \"{ResourceLocatorUISystem.EventNameDisplayOptionClicked    }\";");
             sb.AppendLine($"    public static {ResourceLocatorUISystem.EventNameRemoveUnnecessaryClicked.PadRight(36)} : string = \"{ResourceLocatorUISystem.EventNameRemoveUnnecessaryClicked}\";");
+            sb.AppendLine($"    public static {ResourceLocatorUISystem.EventNameDataOptionClicked       .PadRight(36)} : string = \"{ResourceLocatorUISystem.EventNameDataOptionClicked       }\";");
             sb.AppendLine($"    public static {ResourceLocatorUISystem.EventNameColorOptionClicked      .PadRight(36)} : string = \"{ResourceLocatorUISystem.EventNameColorOptionClicked      }\";");
             sb.AppendLine($"    public static {ResourceLocatorUISystem.EventNameOneColorChanged         .PadRight(36)} : string = \"{ResourceLocatorUISystem.EventNameOneColorChanged         }\";");
             sb.AppendLine("}");
@@ -211,6 +224,17 @@ namespace ResourceLocator
             displayOptionText.Add("UnnecessaryTooltip");
             sb.AppendLine();
             sb.Append(GetTranslationsContent(csFile, "Display option text.", displayOptionText));
+
+            // Include data option text.
+            TranslationKeys dataOptionText = new TranslationKeys();
+            dataOptionText.Add(nameof(DataOption) + "Data");
+            foreach (DataOption dataOption in Enum.GetValues(typeof(DataOption)))
+            {
+                dataOptionText.Add(nameof(DataOption) + dataOption.ToString());
+            }
+            dataOptionText.Add(nameof(DataOption) + "Tooltip");
+            sb.AppendLine();
+            sb.Append(GetTranslationsContent(csFile, "Data option text.", dataOptionText));
 
             // Include color option text.
             TranslationKeys colorOptionText = new TranslationKeys();

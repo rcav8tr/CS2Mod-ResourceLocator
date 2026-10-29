@@ -56,6 +56,14 @@ If your city has no districts:
 - Only one **Display Option** can be selected at a time.
 - **Display Option** does not affect **Cargo Vehicles** (see below).
 
+### Data Option
+- Show the latest or average data for production and surplus/deficit.
+- **Latest** shows the most recent data.
+- **Average** shows the data averaged over 1 game day.
+  Resource consumption (and therefore surplus/deficit) can change drastically over the course of one game day.
+  For example, Food, Beverages, and Telecom are consumed more during the day than at night.
+  The Production Balance feature of the **Change Company** mod uses **Average** in its calculations.
+
 ### Color Option
 - Use multiple colors or one color for the resources.
 - Use **Multiple** when you have many or all resources selected and you want to differentiate between them.
@@ -206,7 +214,7 @@ The following mods were used extensively in the development of this mod:
     <ForumLink Value="https://forum.paradoxplaza.com/forum/threads/resource-locator.1725428/" />
 
     <!-- Version of the mod.  Copied from assembly Version. -->
-    <ModVersion Value="2.2.3" />
+    <ModVersion Value="2.3.0" />
 
     <!-- Recommended version of the base game to use the mod. -->
     <GameVersion Value="1.6.2*" />
@@ -220,7 +228,7 @@ The following mods were used extensively in the development of this mod:
 
     <!-- Change log.  Copied from ChangeLog.md file.  Supports minimal markdown subset. -->
     <ChangeLog>
-- Update for game version 1.6.2.
+- Allow displaying production and surplus/deficit values as latest or average over 1 game day.
 </ChangeLog>
 
     <!-- External links.  Can be set multiple times. -->
