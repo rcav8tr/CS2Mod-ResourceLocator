@@ -1,1 +1,1 @@
-﻿- Allow displaying production and surplus/deficit values as latest or average over 1 game day.
+﻿- Prevent integer overflow on large cities.

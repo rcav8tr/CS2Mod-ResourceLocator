@@ -214,7 +214,7 @@ The following mods were used extensively in the development of this mod:
     <ForumLink Value="https://forum.paradoxplaza.com/forum/threads/resource-locator.1725428/" />
 
     <!-- Version of the mod.  Copied from assembly Version. -->
-    <ModVersion Value="2.3.0" />
+    <ModVersion Value="2.3.1" />
 
     <!-- Recommended version of the base game to use the mod. -->
     <GameVersion Value="1.6.2*" />
@@ -228,7 +228,7 @@ The following mods were used extensively in the development of this mod:
 
     <!-- Change log.  Copied from ChangeLog.md file.  Supports minimal markdown subset. -->
     <ChangeLog>
-- Allow displaying production and surplus/deficit values as latest or average over 1 game day.
+- Prevent integer overflow on large cities.
 </ChangeLog>
 
     <!-- External links.  Can be set multiple times. -->
