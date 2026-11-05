@@ -1,6 +1,7 @@
 ﻿using Colossal.Entities;
 using Colossal.Serialization.Entities;
 using Colossal.UI.Binding;
+using Game;
 using Game.Areas;
 using Game.Buildings;
 using Game.Common;
@@ -499,7 +500,7 @@ namespace ResourceLocator
         /// Called when a game, main menu, editor, etc. is about to be loaded.
         /// </summary>
         [Preserve]
-        protected override void OnGamePreload(Purpose purpose, Game.GameMode mode)
+        protected override void OnGamePreload(Purpose purpose, GameMode mode)
         {
             base.OnGamePreload(purpose, mode);
 
@@ -511,12 +512,12 @@ namespace ResourceLocator
         /// Called when a game is done being loaded.
         /// </summary>
         [Preserve]
-        protected override void OnGameLoadingComplete(Purpose purpose, Game.GameMode mode)
+        protected override void OnGameLoadingComplete(Purpose purpose, GameMode mode)
         {
             base.OnGameLoadingComplete(purpose, mode);
 
             // Initialize only for game mode.
-            if (mode == Game.GameMode.Game)
+            if (mode == GameMode.Game)
             {
                 // Selected district is entire city.
                 SelectedDistrictChanged(EntireCity);
@@ -552,7 +553,7 @@ namespace ResourceLocator
             base.OnUpdate();
 
             // Must be in a game with game loading complete
-            if (GameManager.instance.gameMode != Game.GameMode.Game || !_gameLoadingComplete)
+            if (GameManager.instance.gameMode != GameMode.Game || !_gameLoadingComplete)
             {
                 return;
             }
